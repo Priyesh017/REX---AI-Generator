@@ -41,24 +41,28 @@ export default function PromptHistoryTable() {
 
   const { getToken } = useAuth();
 
-  const fetchHistory = async () => {
-    setLoading(true);
-    try {
-      const token = await getToken();
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+  useEffect(() => {
+    const fetchHistory = async () => {
+      setLoading(true);
+      try {
+        const token = await getToken();
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-      const json = await res.json();
-      setData(json.images || []);
-    } catch (err) {
-      console.error("Error fetching history:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+        const json = await res.json();
+        setData(json.images || []);
+      } catch (err) {
+        console.error("Error fetching history:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHistory();
+  }, [getToken]);
 
   const handleCopy = (prompt: string) => {
     navigator.clipboard.writeText(prompt);
@@ -96,9 +100,16 @@ export default function PromptHistoryTable() {
     }
   };
 
-  useEffect(() => {
-    fetchHistory();
-  }, []);
+  const downloadImage = async (url: string, filename: string) => {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   if (!loading && data.length === 0) {
     return (
@@ -171,7 +182,9 @@ export default function PromptHistoryTable() {
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-muted/70 focus:text-muted focus:bg-zinc-800"
-                      onClick={() => handleCopy(item.prompt)}
+                      onClick={() =>
+                        downloadImage(item.image_url, "generated-image.png")
+                      }
                     >
                       Download Image
                     </DropdownMenuItem>
