@@ -38,10 +38,10 @@ export default function RootLayout({
     >
       <html lang="en">
         <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+          className={`${geistSans.variable} ${geistMono.variable} antialiased bg-zinc-900`}
         >
           {children}
-          <Toaster position="bottom-right" reverseOrder={false} />
+          <Toaster position="top-right" reverseOrder={true} />
         </body>
       </html>
     </ClerkProvider>

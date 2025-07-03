@@ -9,6 +9,20 @@ import {
   getImageUrlFromCookie,
   clearImageUrlCookie,
 } from "@/lib/imageCache";
+import { motion, Variants } from "framer-motion";
+
+const fadeUpVariants: Variants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: (i: number = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 1,
+      delay: 0.5 + i * 0.2,
+      ease: [0.25, 0.4, 0.25, 1],
+    },
+  }),
+};
 
 const ImageGenerator = () => {
   const [imageUrl, setImageUrl] = useState<string>("");
@@ -109,7 +123,12 @@ const ImageGenerator = () => {
   };
 
   return (
-    <div className="relative z-10 min-h-screen px-4 md:px-6 py-24 md:py-32 text-muted">
+    <motion.div
+      variants={fadeUpVariants}
+      initial="hidden"
+      animate="visible"
+      className="relative z-10 min-h-scren text-muted"
+    >
       <form onSubmit={handleGenerate} className="w-full">
         <div className="max-w-sm h-72 mx-auto mt-10 overflow-hidden relative">
           {isLoading ? (
@@ -171,7 +190,7 @@ const ImageGenerator = () => {
           </div>
         )}
       </form>
-    </div>
+    </motion.div>
   );
 };
 
