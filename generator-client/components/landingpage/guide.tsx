@@ -27,12 +27,12 @@ const stepsData = [
 
 const Guide = () => {
   return (
-    <div className="relative z-10 h-screen flex flex-col justify-center items-center mx-auto px-4 md:px-6 py-24 md:py-32 text-muted">
+    <div className="relative z-10 max-h-screen flex flex-col justify-center items-center mx-auto p-4 md:px-6 md:py-32 text-muted text-center">
       <h1 className="text-3xl sm:text-4xl font-bold mb-2">How it works</h1>
       <p className="text-lg text-muted-foreground mb-8">
         Transform Words Into Stunning Images
       </p>
-      <div className="space-y-4 w-full max-w-3xl text-sm">
+      <div className="space-y-4 w-full max-w-3xl text-sm text-left">
         {stepsData.map((item, idx) => (
           <motion.div
             key={idx}

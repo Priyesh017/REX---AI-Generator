@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 const HeroBackground = () => {
   return (
-    <div className="fixed inset-0 -z-0 overflow-hidden bg-[#030303] max-h-screen">
+    <div className="fixed inset-0 -z-0 overflow-hidden bg-[#030303] min-h-screen md:max-h-screen">
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.05] via-transparent to-rose-500/[0.05] blur-3xl" />
 
       {shapes.map((shape, i) => (

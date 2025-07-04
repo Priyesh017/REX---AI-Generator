@@ -22,8 +22,7 @@ const fadeUpVariants: Variants = {
 const Footer = () => {
   return (
     <motion.div
-      className="w-lg border border-neutral-800 rounded-lg px-4 py-2 flex justify-between items-center gap-4 relative bottom-5 left-1/2 -translate-x-1/2 z-10"
-      custom={5}
+      className="md:max-w-lg w-full border border-neutral-800 rounded-lg px-4 py-2 flex justify-between items-center gap-4 relative bottom-5 left-1/2 -translate-x-1/2 z-10"
       variants={fadeUpVariants}
       initial="hidden"
       animate="visible"

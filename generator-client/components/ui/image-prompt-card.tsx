@@ -49,7 +49,7 @@ export const ImagePromptCard: React.FC<ImagePromptCardProps> = ({
         </button>
       </div>
 
-      <p className="text-sm text-muted-foreground mt-2 line-clamp-4">
+      <p className="text-sm text-muted-foreground mt-2 line-clamp-4 text-justify">
         {prompt}
       </p>
 

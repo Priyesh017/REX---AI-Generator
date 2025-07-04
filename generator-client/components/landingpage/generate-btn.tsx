@@ -6,8 +6,8 @@ import Footer from "../footer";
 
 const GenerateBtn = () => {
   return (
-    <div className="relative z-10 h-screen">
-      <div className="text-center h-[92vh] py-24 md:py-32">
+    <div className="relative z-10 max-h-screen">
+      <div className="text-center h-[80vh] md:h-[92vh] md:py-32">
         <h1 className="text-2xl md:text-3xl lg:text-4xl mt-4 font-semibold text-muted py-16">
           See the magic. Try Now
         </h1>

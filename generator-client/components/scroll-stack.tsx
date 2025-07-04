@@ -68,25 +68,37 @@ export default function ScrollStack() {
   }, [scrollIndex, isScrolling]);
 
   return (
-    <div className="h-screen w-screen overflow-hidden relative">
-      {sections.map(({ id, content }, i) => (
-        <motion.div
-          key={id}
-          className="absolute top-0 left-0 w-full h-screen px-4 flex items-center justify-center"
-          initial={{ y: "100%", opacity: 0 }}
-          animate={{
-            y: scrollIndex === i ? "0%" : scrollIndex > i ? "-100%" : "100%",
-            opacity: scrollIndex === i ? 1 : 0,
-          }}
-          transition={{ duration: 0.8, ease: "easeInOut" }}
-          style={{
-            zIndex: scrollIndex === i ? 50 : -50,
-            pointerEvents: scrollIndex === i ? "auto" : "none",
-          }}
-        >
-          {content}
-        </motion.div>
-      ))}
+    <div>
+      <div className="hidden md:block h-screen w-screen overflow-hidden relative">
+        {sections.map(({ id, content }, i) => (
+          <motion.div
+            key={id}
+            className="absolute top-0 left-0 w-full h-screen px-4 flex items-center justify-center"
+            initial={{ y: "100%", opacity: 0 }}
+            animate={{
+              y: scrollIndex === i ? "0%" : scrollIndex > i ? "-100%" : "100%",
+              opacity: scrollIndex === i ? 1 : 0,
+            }}
+            transition={{ duration: 0.8, ease: "easeInOut" }}
+            style={{
+              zIndex: scrollIndex === i ? 50 : -50,
+              pointerEvents: scrollIndex === i ? "auto" : "none",
+            }}
+          >
+            {content}
+          </motion.div>
+        ))}
+      </div>
+      <div className="flex flex-col md:hidden w-screen overflow-y-auto">
+        {sections.map(({ id, content }) => (
+          <div
+            key={id}
+            className="w-full min-h-screen px-4 flex items-center justify-center"
+          >
+            {content}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

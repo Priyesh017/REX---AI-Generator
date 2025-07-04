@@ -25,7 +25,7 @@ const Generate = () => {
 
   return (
     <motion.div
-      custom={5}
+      custom={1}
       variants={fadeUpVariants}
       initial="hidden"
       animate="visible"

@@ -102,7 +102,7 @@ const Navbar = () => {
                       </SignInButton>
                     </SignedOut>
                     <SignedIn>
-                      <div className="flex items-center gap-2 px-4 py-2 relative z-10 text-muted">
+                      <div className="flex justify-center items-center gap-2 px-4 py-2 relative z-10 text-muted">
                         <UserButton />
                         {/* <h1>Welcome, Priyesh</h1> */}
                       </div>
@@ -163,7 +163,7 @@ const NavLink: React.FC<NavLinkProps> = ({
     >
       {item.icon}
     </span>
-    <span className="group-hover:text-muted">{item.label}</span>
+    <span className="hidden md:block group-hover:text-muted">{item.label}</span>
   </motion.a>
 );
 

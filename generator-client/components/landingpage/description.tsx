@@ -5,7 +5,7 @@ import React from "react";
 
 const Description = () => {
   return (
-    <div className="flex flex-col justify-center items-center h-screen mt-16 mx-auto px-4 md:px-6 py-24 md:py-32 text-muted">
+    <div className="relative z-10 flex flex-col justify-center items-center min-h-screen md:max-h-screen md:mt-16 mx-auto p-4 md:px-6 md:py-32 text-muted">
       <h1 className="text-3xl sm:text-4xl font-semibold mb-2">
         Creat AI Images
       </h1>
@@ -18,7 +18,7 @@ const Description = () => {
           alt=""
           width={1200}
           height={1200}
-          className="w-80 xl:w-96 rounded-lg"
+          className="w-80 md:w-96 rounded-lg"
         />
         <div className="text-muted-foreground max-w-lg">
           <h2 className="text-3xl font-medium mb-4 text-muted">
@@ -30,7 +30,7 @@ const Description = () => {
             your thoughts into eye-catching visuals with just one click. Imagine
             it, describe it, and watch it come to life instantly.
           </p>
-          <p>
+          <p className="text-justify">
             Simple type in a text prompt, and our cutting-edge AI will generate
             high-quality visuals in sceonds. From Product visuals to character
             designs and portraits, even concepts that don&apos;t yet exist can

@@ -126,81 +126,85 @@ export default function PromptHistoryTable() {
       animate="visible"
       className="mt-4 min-h-screen"
     >
-      <div className="max-w-5xl mx-auto border border-zinc-800 rounded-lg">
-        {/* Grid header */}
-        <div className="grid grid-cols-12 bg-zinc-900 text-center text-sm font-semibold text-zinc-400 px-4 py-2 rounded-t-lg">
-          <div className="col-span-1">SL No.</div>
-          <div className="col-span-2">Image</div>
-          <div className="col-span-5">Prompt</div>
-          <div className="col-span-3">Created At</div>
-          {/* <div className="col-span-1">Actions</div> */}
-        </div>
+      {!loading ? (
+        <div className="max-w-5xl md:mx-auto border border-zinc-800 rounded-lg">
+          {/* Grid header */}
+          <div className="grid grid-cols-12 bg-zinc-900 text-center text-sm font-semibold text-zinc-400 p-1 md:px-4 mdpy-2 rounded-t-lg">
+            <div className="col-span-1">SN</div>
+            <div className="col-span-2">Image</div>
+            <div className="col-span-5">Prompt</div>
+            <div className="col-span-3">Created At</div>
+            {/* <div className="col-span-1">Actions</div> */}
+          </div>
 
-        {/* Grid rows */}
-        <div className="divide-y divide-zinc-800 rounded-b-lg overflow-hidden">
-          {data.map((item, idx) => (
-            <div
-              key={item.id}
-              className="grid grid-cols-12 place-items-center px-4 py-3 hover:bg-zinc-700/30 hover:backdrop-blur-lg transition text-sm text-zinc-200"
-            >
-              <div className="col-span-1">{idx + 1}</div>
-              <div className="col-span-2">
-                <Image
-                  src={item.image_url}
-                  alt="Generated"
-                  width={50}
-                  height={50}
-                  className="w-16 h-16 rounded object-cover"
-                />
-              </div>
-              <div className="col-span-5 text-muted/80 truncate pr-2">
-                {item.prompt}
-              </div>
-              <div className="col-span-3 text-muted-foreground text-sm">
-                {new Date(item.created_at).toLocaleString()}
-              </div>
-              <div className="col-span-1 text-right">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="p-2 rounded hover:bg-zinc-800 transition">
-                      <MoreVertical className="w-5 h-5 text-zinc-400" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    className="w-40 bg-zinc-800/30 backdrop-blur-lg border-zinc-800"
-                  >
-                    <DropdownMenuLabel className="text-muted/90 tracking-wider">
-                      Actions
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator className="h-[0.5px] bg-zinc-800" />
-                    <DropdownMenuItem
-                      className="text-muted/70 focus:text-muted focus:bg-zinc-800"
-                      onClick={() => handleCopy(item.prompt)}
+          {/* Grid rows */}
+          <div className="divide-y divide-zinc-800 rounded-b-lg overflow-hidden">
+            {data.map((item, idx) => (
+              <div
+                key={item.id}
+                className="grid grid-cols-12 place-items-center p-1 md:px-4 md:py-3 hover:bg-zinc-700/30 hover:backdrop-blur-lg transition text-sm text-zinc-200"
+              >
+                <div className="col-span-1">{idx + 1}</div>
+                <div className="col-span-2">
+                  <Image
+                    src={item.image_url}
+                    alt="Generated"
+                    width={50}
+                    height={50}
+                    className="w-16 h-16 rounded object-cover"
+                  />
+                </div>
+                <div className="col-span-5 text-muted/80 line-clamp-2 overflow-hidden md:truncate px-2">
+                  {item.prompt}
+                </div>
+                <div className="col-span-3 text-muted-foreground text-sm">
+                  {new Date(item.created_at).toLocaleString()}
+                </div>
+                <div className="col-span-1 text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="p-2 rounded hover:bg-zinc-800 transition">
+                        <MoreVertical className="w-5 h-5 text-zinc-400" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      className="w-40 bg-zinc-800/30 backdrop-blur-lg border-zinc-800"
                     >
-                      Copy Prompt
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="text-muted/70 focus:text-muted focus:bg-zinc-800"
-                      onClick={() =>
-                        downloadImage(item.image_url, "generated-image.png")
-                      }
-                    >
-                      Download Image
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="text-red-500 focus:text-muted focus:bg-red-600/70"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                      <DropdownMenuLabel className="text-muted/90 tracking-wider">
+                        Actions
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator className="h-[0.5px] bg-zinc-800" />
+                      <DropdownMenuItem
+                        className="text-muted/70 focus:text-muted focus:bg-zinc-800"
+                        onClick={() => handleCopy(item.prompt)}
+                      >
+                        Copy Prompt
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-muted/70 focus:text-muted focus:bg-zinc-800"
+                        onClick={() =>
+                          downloadImage(item.image_url, "generated-image.png")
+                        }
+                      >
+                        Download Image
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-red-500 focus:text-muted focus:bg-red-600/70"
+                        onClick={() => handleDelete(item.id)}
+                      >
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="text-center mt-20">Loading...</div>
+      )}
     </motion.div>
   );
 }

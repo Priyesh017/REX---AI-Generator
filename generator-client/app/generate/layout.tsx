@@ -15,7 +15,9 @@ export default function RootLayout({
         <Navbar />
         <HeroBackground />
         {children}
-        <Footer />
+        <div className="w-full mx-auto px-4">
+          <Footer />
+        </div>
       </main>
     </div>
   );

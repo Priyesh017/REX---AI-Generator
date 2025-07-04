@@ -21,8 +21,8 @@ const prompts = [
 
 export default function ImagePromptSection() {
   return (
-    <div className="relative z-10 w-full h-screen flex flex-col justify-center items-center px-4 md:px-6 py-24 md:py-32 text-muted">
-      <h2 className="text-3xl sm:text-4xl font-bold mt-20 mb-2 text-center">
+    <div className="relative z-10 w-full min-h-screen md:max-h-screen flex flex-col justify-center items-center mt-20 p-4 md:px-6 md:py-32 text-muted text-center">
+      <h2 className="text-3xl sm:text-4xl font-bold mb-2">
         Generated Prompts Gallery
       </h2>
       <p className="text-lg text-muted-foreground mb-8">

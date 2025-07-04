@@ -30,16 +30,16 @@ const HeroContent = () => {
   const router = useRouter();
 
   return (
-    <div className="relative z-10 container mx-auto px-4 md:px-6 py-24 md:py-32 h-screen">
+    <div className="relative z-10 container mx-auto p-4 md:px-6 md:py-32 max-h-screen">
       <div className="max-w-3xl mx-auto text-center">
         <motion.div
           custom={0}
           variants={fadeUpVariants}
           initial="hidden"
           animate="visible"
-          className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.08] mb-8 md:mb-12"
+          className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] backdrop-blur-lg border border-white/[0.08] mb-8 md:mb-12"
         >
-          <span className="text-sm text-white/60 tracking-wide">
+          <span className="text-sm text-muted/60 tracking-wide">
             Generative AI Tool ⭐
           </span>
         </motion.div>
@@ -77,7 +77,14 @@ const HeroContent = () => {
             art in seconds - just type, watch the match happen.
           </p>
         </motion.div>
-        <BreathingNeonButton onClick={() => router.push("/generate")} />
+        <motion.div
+          custom={3}
+          variants={fadeUpVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <BreathingNeonButton onClick={() => router.push("/generate")} />
+        </motion.div>
       </div>
     </div>
   );
