@@ -1,12 +1,14 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
+    "target": "ES2020",
     "module": "CommonJS",
-    "rootDir": "src",
-    "outDir": "dist",
-    "strict": true,
+    "moduleResolution": "node",
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "typeRoots": ["./src/types", "./node_modules/@types"]
-  }
+    "types": ["node"],
+    "outDir": "build",
+    "strict": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
 }
