@@ -7,8 +7,10 @@
     "resolveJsonModule": true,
     "types": ["node"],
     "outDir": "build",
-    "strict": true
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
   },
   "include": ["src"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "build"]
 }
