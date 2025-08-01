@@ -24,7 +24,7 @@ const fadeUpVariants: Variants = {
   }),
 };
 
-const ImageGenerator = () => {
+const ImageGeneratorPage = () => {
   const [imageUrl, setImageUrl] = useState<string>("");
   const [input, setInput] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -194,4 +194,4 @@ const ImageGenerator = () => {
   );
 };
 
-export default ImageGenerator;
+export default ImageGeneratorPage;

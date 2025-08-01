@@ -2,8 +2,8 @@
 
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ImageGenerator from "@/components/pages/image-generator";
-import PromptHistory from "@/components/pages/prompt-history";
+import ImageGeneratorPage from "@/components/pages/image-generator";
+import PromptHistoryTablePage from "@/components/pages/prompt-history";
 import { useAuth } from "@clerk/nextjs";
 import { motion, Variants } from "framer-motion";
 
@@ -39,11 +39,11 @@ const Generate = () => {
           </TabsList>
         )}
         <TabsContent value="generator">
-          <ImageGenerator />
+          <ImageGeneratorPage />
         </TabsContent>
         {isSignedIn && (
           <TabsContent value="history">
-            <PromptHistory />
+            <PromptHistoryTablePage />
           </TabsContent>
         )}
       </Tabs>

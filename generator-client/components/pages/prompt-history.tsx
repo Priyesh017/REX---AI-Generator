@@ -35,7 +35,7 @@ const fadeUpVariants: Variants = {
   }),
 };
 
-export default function PromptHistoryTable() {
+export default function PromptHistoryTablePage() {
   const [data, setData] = useState<ImagePrompt[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -203,7 +203,36 @@ export default function PromptHistoryTable() {
           </div>
         </div>
       ) : (
-        <div className="text-center mt-20">Loading...</div>
+        <div className="max-w-5xl md:mx-auto border border-zinc-800 rounded-lg animate-pulse">
+          {/* Grid header */}
+          <div className="grid grid-cols-12 bg-zinc-900 text-center text-sm font-semibold text-zinc-400 p-1 md:px-4 mdpy-2 rounded-t-lg">
+            <div className="col-span-1">SN</div>
+            <div className="col-span-2">Image</div>
+            <div className="col-span-5">Prompt</div>
+            <div className="col-span-3">Created At</div>
+          </div>
+
+          {/* Skeleton rows */}
+          <div className="divide-y divide-zinc-800 rounded-b-lg overflow-hidden">
+            {/* {[...Array(1)].map((_, idx) => ( */}
+            <div
+              // key={idx}
+              className="grid grid-cols-12 place-items-center p-1 md:px-4 md:py-3 text-sm"
+            >
+              <div className="col-span-1 h-4 w-4 bg-zinc-700 rounded" />
+              <div className="col-span-2">
+                <div className="w-16 h-16 bg-zinc-700 rounded" />
+              </div>
+              <div className="col-span-5 w-full px-2">
+                <div className="h-3 w-full bg-zinc-700 rounded mb-1" />
+                <div className="h-3 w-3/4 bg-zinc-700 rounded" />
+              </div>
+              <div className="col-span-3 h-4 w-24 bg-zinc-700 rounded" />
+              <div className="col-span-1 h-4 w-4 bg-zinc-700 rounded-full" />
+            </div>
+            {/* ))} */}
+          </div>
+        </div>
       )}
     </motion.div>
   );

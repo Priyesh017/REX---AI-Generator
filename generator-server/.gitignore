@@ -36,3 +36,5 @@ generator-server/.env
 
 # typescript
 *.tsbuildinfo
+
+rzp-key.csv

@@ -1,10 +1,16 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import {
+  SignInButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+  useAuth,
+} from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import type { Variants } from "framer-motion";
-import { Home, Coins, User, Sparkles } from "lucide-react";
+import { Home, Coins, User, Sparkles, Settings } from "lucide-react";
 
 interface MenuItem {
   icon: React.ReactNode;
@@ -14,42 +20,48 @@ interface MenuItem {
   iconColor: string;
 }
 
-export const menuItems = [
-  {
-    icon: <Home className="h-5 w-5" />,
-    label: "Home",
-    href: "/",
-    gradient:
-      "radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(37,99,235,0.06) 50%, rgba(29,78,216,0) 100%)",
-    iconColor: "text-blue-500",
-  },
-  {
-    icon: <Coins className="h-5 w-5" />,
-    label: "Pricing",
-    href: "/buy",
-    gradient:
-      "radial-gradient(circle, rgba(249,115,22,0.15) 0%, rgba(234,88,12,0.06) 50%, rgba(194,65,12,0) 100%)",
-    iconColor: "text-orange-500",
-  },
-  {
-    icon: <Sparkles className="h-5 w-5" />,
-    label: "Generator",
-    href: "/generate",
-    gradient:
-      "radial-gradient(circle, rgba(34,197,94,0.15) 0%, rgba(22,163,74,0.06) 50%, rgba(21,128,61,0) 100%)",
-    iconColor: "text-green-500",
-  },
-  {
-    icon: <User className="h-5 w-5" />,
-    label: "Login",
-    href: "#",
-    gradient:
-      "radial-gradient(circle, rgba(239,68,68,0.15) 0%, rgba(220,38,38,0.06) 50%, rgba(185,28,28,0) 100%)",
-    iconColor: "text-red-500",
-  },
-];
-
 const Navbar = () => {
+  const { isSignedIn } = useAuth();
+
+  const menuItems = [
+    {
+      icon: <Home className="h-5 w-5" />,
+      label: "Home",
+      href: "/",
+      gradient:
+        "radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(37,99,235,0.06) 50%, rgba(29,78,216,0) 100%)",
+      iconColor: "text-blue-500",
+    },
+    {
+      icon: <Coins className="h-5 w-5" />,
+      label: "Pricing",
+      href: "/buy",
+      gradient:
+        "radial-gradient(circle, rgba(249,115,22,0.15) 0%, rgba(234,88,12,0.06) 50%, rgba(194,65,12,0) 100%)",
+      iconColor: "text-orange-500",
+    },
+    {
+      icon: <Sparkles className="h-5 w-5" />,
+      label: "Generator",
+      href: "/generate",
+      gradient:
+        "radial-gradient(circle, rgba(34,197,94,0.15) 0%, rgba(22,163,74,0.06) 50%, rgba(21,128,61,0) 100%)",
+      iconColor: "text-green-500",
+    },
+    {
+      icon: isSignedIn ? (
+        <Settings className="h-5 w-5" />
+      ) : (
+        <User className="h-5 w-5" />
+      ),
+      label: isSignedIn ? "Profile" : "Login",
+      href: isSignedIn ? "/profile" : "#",
+      gradient:
+        "radial-gradient(circle, rgba(239,68,68,0.15) 0%, rgba(220,38,38,0.06) 50%, rgba(185,28,28,0) 100%)",
+      iconColor: "text-red-500",
+    },
+  ];
+
   return (
     <motion.nav
       className="fixed top-6 left-1/2 -translate-x-1/2 z-[999] p-2 w-fit rounded-2xl bg-gradient-to-b from-zinc-900/20 to-zinc-900/10 backdrop-blur-xl border border-border/20 shadow-lg overflow-hidden"
@@ -68,7 +80,7 @@ const Navbar = () => {
       />
 
       <div className="flex items-center justify-between relative z-10">
-        <div className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white/90 to-rose-300 text-2xl font-bold px-2 mx-4">
+        <div className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white/90 to-rose-300 text-2xl font-bold px-2 mx-4 cursor-default">
           REX
         </div>
 
@@ -93,20 +105,15 @@ const Navbar = () => {
                       <SignInButton mode="modal">
                         <button>
                           <NavLink item={item} front />
-                        </button>
-                      </SignInButton>
-                      <SignInButton mode="modal">
-                        <button>
                           <NavLink item={item} back />
                         </button>
                       </SignInButton>
                     </SignedOut>
-                    <SignedIn>
+                    {/* <SignedIn>
                       <div className="flex justify-center items-center gap-2 px-4 py-2 relative z-10 text-muted">
                         <UserButton />
-                        {/* <h1>Welcome, Priyesh</h1> */}
                       </div>
-                    </SignedIn>
+                    </SignedIn> */}
                   </>
                 ) : (
                   <>
@@ -118,6 +125,9 @@ const Navbar = () => {
             </motion.li>
           ))}
         </ul>
+        {/* <div className="text-muted-foreground px-4 py-2 min-w-max cursor-default">
+          Credits: 1000
+        </div> */}
       </div>
     </motion.nav>
   );
