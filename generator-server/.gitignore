@@ -1,8 +1,7 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
+# Node modules
 /node_modules
-/.pnp
+
+# Yarn/PNPM/PnP
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -10,31 +9,44 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
+# PNPM debug
+.pnpm-debug.log*
 
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# Testing
+/coverage
 
-generator-server/.env
+# Build output
+/build
+/dist
 
-# vercel
-.vercel
-
-# typescript
+# TypeScript
 *.tsbuildinfo
 
+# Mac system files
+.DS_Store
+
+# Environment files
+.env
+.env.*
+generator-server/.env
+
+# Secrets (e.g., Razorpay keys)
 rzp-key.csv
+*.pem
+
+# Vercel
+.vercel
+
+# Render
+.render
+
+# IDE-specific
+.vscode
+.idea
+*.swp
+*.swo
