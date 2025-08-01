@@ -1,12 +1,13 @@
 {
   "name": "generator-server",
   "version": "1.0.0",
-  "description": "",
+  "description": "AI Generator Server",
   "main": "server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
-    "build": "tsc "
+    "build": "tsc ",
+    "postinstall": "pnpm install --frozen-lockfile"
   },
   "keywords": [],
   "author": "",
