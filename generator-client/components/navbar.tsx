@@ -1,13 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import {
-  SignInButton,
-  SignedIn,
-  SignedOut,
-  UserButton,
-  useAuth,
-} from "@clerk/nextjs";
+import { SignInButton, SignedOut, useAuth } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import type { Variants } from "framer-motion";
 import { Home, Coins, User, Sparkles, Settings } from "lucide-react";
@@ -109,11 +103,6 @@ const Navbar = () => {
                         </button>
                       </SignInButton>
                     </SignedOut>
-                    {/* <SignedIn>
-                      <div className="flex justify-center items-center gap-2 px-4 py-2 relative z-10 text-muted">
-                        <UserButton />
-                      </div>
-                    </SignedIn> */}
                   </>
                 ) : (
                   <>

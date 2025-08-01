@@ -8,8 +8,41 @@ import toast from "react-hot-toast";
 import { Loader2 } from "lucide-react"; // Optional: any loading spinner icon
 
 declare global {
+  interface RazorpayOptions {
+    key: string;
+    amount: number;
+    currency?: string;
+    name?: string;
+    description?: string;
+    image?: string;
+    order_id?: string;
+    handler?: (response: {
+      razorpay_payment_id: string;
+      razorpay_order_id: string;
+      razorpay_signature: string;
+    }) => void;
+    prefill?: {
+      name?: string;
+      email?: string;
+      contact?: string;
+    };
+    notes?: Record<string, string | number>;
+    theme?: {
+      color?: string;
+    };
+    modal?: {
+      ondismiss?: () => void;
+    };
+  }
+
   interface Window {
-    Razorpay: any;
+    Razorpay: new (options: RazorpayOptions) => RazorpayInstance;
+  }
+
+  interface RazorpayInstance {
+    open(): void;
+    on(event: string, callback: (...args: unknown[]) => void): void;
+    close(): void;
   }
 }
 
@@ -68,7 +101,7 @@ const Buy = () => {
         name: "REX",
         description: "Buy Credits",
         order_id: data.order.id,
-        handler: async function (response: any) {
+        handler: async function () {
           try {
             const confirmRes = await fetch(
               `${process.env.NEXT_PUBLIC_API_URL}/payment-success`,
@@ -91,10 +124,16 @@ const Buy = () => {
             }
 
             toast.success("Payment successful and credits added!");
-          } catch (err: any) {
-            toast.error(
-              "Payment succeeded but credit update failed: " + err.message
-            );
+          } catch (err: unknown) {
+            if (err instanceof Error) {
+              toast.error(
+                "Payment succeeded but credit update failed: " + err.message
+              );
+            } else {
+              toast.error(
+                "Payment succeeded but credit update failed: Unknown error"
+              );
+            }
           }
         },
         prefill: {
@@ -110,8 +149,14 @@ const Buy = () => {
       });
 
       razorpay.open();
-    } catch (err: any) {
-      toast.error("Payment failed: " + err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        toast.error("Payment failed: " + err.message);
+      } else if (typeof err === "string") {
+        toast.error("Payment failed: " + err);
+      } else {
+        toast.error("Payment failed due to an unknown error.");
+      }
     } finally {
       setLoading(false); // stop loading in any case
     }
