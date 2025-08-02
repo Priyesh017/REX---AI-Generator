@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
-    "build": "tsc ",
-    "postinstall": "pnpm install --frozen-lockfile"
+    "build": "tsc "
   },
   "keywords": [],
   "author": "",
