@@ -12,9 +12,12 @@ const envSchema = z.object({
   HUGGINGFACE_MODEL: z.string(),
   HUGGINGFACE_TOKEN: z.string().startsWith("hf_"),
   CLERK_SECRET_KEY: z.string().startsWith("sk_"),
-  PORT: z.string().optional(), // optional string, will convert to number below
-  // RAZORPAY_KEY_ID: z.string().min(1),
-  // RAZORPAY_KEY_SECRET: z.string().min(1),
+  PORT: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : 5001)),
+  RAZORPAY_KEY_ID: z.string().min(1),
+  RAZORPAY_KEY_SECRET: z.string().min(1),
 });
 
 // Parse and validate environment variables
@@ -38,6 +41,6 @@ export const env = {
   huggingfaceToken: raw.HUGGINGFACE_TOKEN,
   clerkSecretKey: raw.CLERK_SECRET_KEY,
   port: Number(raw.PORT || 5001),
-  // razorpayKeyId: raw.RAZORPAY_KEY_ID,
-  // razorpayKeySecret: raw.RAZORPAY_KEY_SECRET,
+  razorpayKeyId: raw.RAZORPAY_KEY_ID,
+  razorpayKeySecret: raw.RAZORPAY_KEY_SECRET,
 };

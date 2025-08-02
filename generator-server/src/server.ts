@@ -13,6 +13,6 @@ app.get("/", (req: Request, res: Response) => {
 
 app.use("/api", useRoute);
 
-app.listen(env.port, () =>
-  console.log(`🚀 Server is running at http://localhost:${env.port}`)
+app.listen(env.port, "0.0.0.0", () =>
+  console.log(`🚀 Server is live on port ${env.port} (accessible by Render)`)
 );
