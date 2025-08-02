@@ -43,13 +43,16 @@ const Navbar = () => {
       iconColor: "text-green-500",
     },
     {
-      icon: isSignedIn ? (
-        <Settings className="h-5 w-5" />
-      ) : (
-        <User className="h-5 w-5" />
-      ),
-      label: isSignedIn ? "Profile" : "Login",
-      href: isSignedIn ? "/profile" : "#",
+      icon:
+        isSignedIn === null ? (
+          <User className="h-5 w-5" />
+        ) : isSignedIn ? (
+          <Settings className="h-5 w-5" />
+        ) : (
+          <User className="h-5 w-5" />
+        ),
+      label: isSignedIn === null ? "Login" : isSignedIn ? "Profile" : "Login",
+      href: isSignedIn === null ? "#" : isSignedIn ? "/profile" : "#",
       gradient:
         "radial-gradient(circle, rgba(239,68,68,0.15) 0%, rgba(220,38,38,0.06) 50%, rgba(185,28,28,0) 100%)",
       iconColor: "text-red-500",
