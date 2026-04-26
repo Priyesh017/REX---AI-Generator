@@ -77,7 +77,7 @@ export const paymentSuccess = async (req: Request, res: Response) => {
   // ✅ Retrieve order + plan details
   const { data: orderData, error: orderError } = await supabase
     .from("orders")
-    .select("*, plan:plan_id(*)") // get order and joined plan
+    .select("*, plan:plan_id(*)")
     .eq("order_id", razorpay_order_id)
     .eq("clerk_id", clerkId)
     .single();
@@ -86,20 +86,13 @@ export const paymentSuccess = async (req: Request, res: Response) => {
     return res.status(404).json({ success: false, error: "Order not found" });
   }
 
-  // ✅ Check idempotency
   if (orderData.status === "paid") {
     return res.json({ success: true, message: "Order already processed" });
   }
 
-  // ✅ Add credits via Supabase RPC function FIRST to ensure we don't mark paid if credit fails
-  // Actually, standard is to mark paid, then credit, or both in transaction. RPC can do it.
-  // We'll update credits first.
   const planCredits = orderData.plan?.credits;
-
   if (!planCredits || typeof planCredits !== "number") {
-    return res
-      .status(400)
-      .json({ success: false, error: "Invalid plan credits" });
+    return res.status(400).json({ success: false, error: "Invalid plan credits" });
   }
 
   const { error: creditError } = await supabase.rpc("increment_credits", {
@@ -111,16 +104,69 @@ export const paymentSuccess = async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, error: creditError.message });
   }
 
-  // ✅ Update order status to "paid"
-  const { error: updateOrderError } = await supabase
+  await supabase
     .from("orders")
     .update({ status: "paid" })
     .eq("order_id", razorpay_order_id);
 
-  if (updateOrderError) {
-    console.error("Order status update failed:", updateOrderError);
-    // Continue since credits are added, but we should log it
+  return res.json({ success: true, message: "Credits updated successfully" });
+};
+
+// Handle Razorpay Webhook (Server-to-Server)
+export const paymentWebhook = async (req: Request, res: Response) => {
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET || "your_webhook_secret";
+  
+  // Razorpay sends the signature in the header
+  const signature = req.headers["x-razorpay-signature"];
+  
+  const expectedSignature = crypto
+    .createHmac("sha256", secret)
+    .update(JSON.stringify(req.body))
+    .digest("hex");
+
+  if (signature !== expectedSignature) {
+    return res.status(400).json({ success: false, error: "Invalid webhook signature" });
   }
 
-  return res.json({ success: true, message: "Credits updated successfully" });
+  const { event, payload } = req.body;
+
+  if (event === "order.paid") {
+    const orderId = payload.order.entity.id;
+    
+    // 1. Get order details from our DB
+    const { data: orderData, error: orderError } = await supabase
+      .from("orders")
+      .select("*, plan:plan_id(*)")
+      .eq("order_id", orderId)
+      .single();
+
+    if (orderError || !orderData) {
+      console.error("Webhook: Order not found", orderId);
+      return res.status(404).json({ success: false });
+    }
+
+    // 2. Idempotency check
+    if (orderData.status === "paid") {
+      return res.json({ success: true, message: "Already processed" });
+    }
+
+    // 3. Add credits
+    const planCredits = orderData.plan?.credits;
+    if (planCredits) {
+      await supabase.rpc("increment_credits", {
+        user_clerk_id: orderData.clerk_id,
+        credits_to_add: planCredits,
+      });
+
+      // 4. Update status
+      await supabase
+        .from("orders")
+        .update({ status: "paid" })
+        .eq("order_id", orderId);
+        
+      console.log(`✅ Webhook: Credited ${planCredits} to user ${orderData.clerk_id}`);
+    }
+  }
+
+  res.json({ status: "ok" });
 };

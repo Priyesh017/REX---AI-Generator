@@ -8,7 +8,7 @@ import {
 import { requireAuth } from "../middleware/auth";
 import { catchAsync } from "../utils/catchAsync";
 import { getSubscriptionPlans } from "../controllers/getPlans";
-import { createOrder, paymentSuccess } from "../controllers/paymentController";
+import { createOrder, paymentSuccess, paymentWebhook } from "../controllers/paymentController";
 import { getUserDetails } from "../controllers/getUserDetails";
 import { apiLimiter, generationLimiter } from "../middleware/limiter";
 
@@ -27,5 +27,6 @@ router.delete("/history/:id", requireAuth, catchAsync(deleteImageHistory));
 
 router.post("/create-order", requireAuth, catchAsync(createOrder));
 router.post("/payment-success", requireAuth, catchAsync(paymentSuccess));
+router.post("/payment-webhook", catchAsync(paymentWebhook));
 
 export default router;

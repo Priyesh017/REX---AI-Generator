@@ -106,13 +106,16 @@ const Buy = () => {
           razorpay_signature: string;
         }) {
           try {
+            // Fetch a fresh token to avoid "expired token" errors if the payment process was slow
+            const freshToken = await getToken();
+
             const confirmRes = await fetch(
               `${process.env.NEXT_PUBLIC_API_URL}/payment-success`,
               {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
+                  Authorization: `Bearer ${freshToken}`,
                 },
                 body: JSON.stringify({
                   razorpay_payment_id: response.razorpay_payment_id,
