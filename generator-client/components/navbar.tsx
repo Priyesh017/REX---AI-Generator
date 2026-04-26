@@ -121,7 +121,7 @@ const Navbar = () => {
                 <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] group-hover:animate-pulse" />
               )}
               <span className="text-[11px] font-medium tracking-wider text-zinc-300 uppercase">
-                {credits !== null ? `${credits}` : "-"}
+                {credits !== null ? `${credits}` : "0"}
               </span>
             </div>
           )}
