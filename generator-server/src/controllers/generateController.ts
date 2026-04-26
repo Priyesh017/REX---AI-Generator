@@ -30,15 +30,28 @@ export const generateImage = async (req: Request, res: Response) => {
   }
 
   try {
-    // Step 1: Check credits
-    const { data: user, error: userError } = await supabase
+    // Step 1: Check credits (with lazy user creation)
+    let { data: user, error: userError } = await supabase
       .from("users")
       .select("credits")
       .eq("clerk_id", user_id)
       .single();
 
-    if (userError || !user) {
-      return res.status(404).json({ error: "User not found" });
+    // If user doesn't exist in Supabase yet, create them with default credits
+    if (userError && userError.code === "PGRST116") {
+      const { data: newUser, error: insertError } = await supabase
+        .from("users")
+        .insert([{ clerk_id: user_id, credits: 3 }])
+        .select("credits")
+        .single();
+
+      if (insertError) {
+        console.error("❌ Failed to provision new user:", insertError);
+        return res.status(500).json({ error: "Failed to initialize user" });
+      }
+      user = newUser;
+    } else if (userError || !user) {
+      return res.status(userError ? 500 : 404).json({ error: "User check failed" });
     }
 
     if (user.credits < 1) {
