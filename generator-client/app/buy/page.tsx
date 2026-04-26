@@ -100,7 +100,11 @@ const Buy = () => {
         name: "REX",
         description: "Buy Credits",
         order_id: data.order.id,
-        handler: async function (response: any) {
+        handler: async function (response: {
+          razorpay_payment_id: string;
+          razorpay_order_id: string;
+          razorpay_signature: string;
+        }) {
           try {
             const confirmRes = await fetch(
               `${process.env.NEXT_PUBLIC_API_URL}/payment-success`,
