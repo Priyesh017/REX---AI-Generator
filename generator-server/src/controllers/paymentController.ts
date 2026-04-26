@@ -35,9 +35,9 @@ export const createOrder = async (req: Request, res: Response) => {
       receipt: `rcpt_${Date.now()}`,
     });
 
-    console.log("Created Razorpay order:", order);
+    console.log("Created Razorpay order:", order.id);
 
-    await supabase.from("orders").insert([
+    const { error: insertError } = await supabase.from("orders").insert([
       {
         order_id: order.id,
         clerk_id: clerkId,
@@ -46,6 +46,15 @@ export const createOrder = async (req: Request, res: Response) => {
       },
     ]);
 
+    if (insertError) {
+      console.error("❌ Failed to save order to database:", insertError);
+      return res.status(500).json({ 
+        success: false, 
+        error: "Database error: Could not save order. Please try again." 
+      });
+    }
+
+    console.log("✅ Order saved to database:", order.id);
     return res.json({ success: true, order });
   } catch (err: any) {
     console.error("Order creation error:", err);
@@ -74,6 +83,8 @@ export const paymentSuccess = async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, error: "Invalid payment signature" });
   }
 
+  console.log(`🔍 Processing payment success for Order: ${razorpay_order_id}, User: ${clerkId}`);
+
   // ✅ Retrieve order + plan details
   const { data: orderData, error: orderError } = await supabase
     .from("orders")
@@ -83,6 +94,11 @@ export const paymentSuccess = async (req: Request, res: Response) => {
     .single();
 
   if (orderError || !orderData) {
+    console.error("❌ Order not found in database:", {
+      searchingFor: razorpay_order_id,
+      clerkId: clerkId,
+      error: orderError
+    });
     return res.status(404).json({ success: false, error: "Order not found" });
   }
 
