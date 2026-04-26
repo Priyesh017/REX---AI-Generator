@@ -41,7 +41,11 @@ export const generateImage = async (req: Request, res: Response) => {
     if (userError && userError.code === "PGRST116") {
       const { data: newUser, error: insertError } = await supabase
         .from("users")
-        .insert([{ clerk_id: user_id, credits: 3 }])
+        .insert([{ 
+          clerk_id: user_id, 
+          credits: 5,
+          current_plan: "free"
+        }])
         .select("credits")
         .single();
 
@@ -67,11 +71,17 @@ export const generateImage = async (req: Request, res: Response) => {
     // Step 4: Generate title
     const title = await generateTitleFromPrompt(prompt);
 
-    // Step 5: Deduct credit
-    await supabase
+    // Step 5: Deduct credit (Safe Update)
+    const { error: deductError } = await supabase
       .from("users")
       .update({ credits: user.credits - 1 })
-      .eq("clerk_id", user_id);
+      .eq("clerk_id", user_id)
+      .gt("credits", 0);
+
+    if (deductError) {
+      console.error("❌ Credit deduction failed:", deductError);
+      return res.status(500).json({ error: "Failed to deduct credits" });
+    }
 
     // Step 6: Insert metadata into database
     const { data: image, error } = await supabase

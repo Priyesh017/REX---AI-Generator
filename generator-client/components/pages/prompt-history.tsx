@@ -9,11 +9,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, X } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "@clerk/nextjs";
 import Image from "next/image";
-import { motion, Variants } from "framer-motion";
+import { motion, Variants, AnimatePresence } from "framer-motion";
 
 type ImagePrompt = {
   id: string;
@@ -38,31 +38,46 @@ const fadeUpVariants: Variants = {
 export default function PromptHistoryTablePage() {
   const [data, setData] = useState<ImagePrompt[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  const [pagination, setPagination] = useState({ page: 1, hasNext: false });
 
   const { getToken } = useAuth();
 
-  useEffect(() => {
-    const fetchHistory = async () => {
-      setLoading(true);
-      try {
-        const token = await getToken();
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+  const fetchHistory = async (pageToFetch: number, isLoadMore: boolean = false) => {
+    if (!isLoadMore) setLoading(true);
+    try {
+      const token = await getToken();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history?page=${pageToFetch}&limit=10`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-        const json = await res.json();
+      const json = await res.json();
+      if (isLoadMore) {
+        setData((prev) => [...prev, ...(json.images || [])]);
+      } else {
         setData(json.images || []);
-      } catch (err) {
-        console.error("Error fetching history:", err);
-      } finally {
-        setLoading(false);
       }
-    };
+      setPagination({
+        page: json.pagination?.page || pageToFetch,
+        hasNext: json.pagination?.hasNext || false
+      });
+    } catch (err) {
+      console.error("Error fetching history:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchHistory();
+  useEffect(() => {
+    fetchHistory(1);
   }, [getToken]);
+
+  const handleLoadMore = () => {
+    fetchHistory(pagination.page + 1, true);
+  };
 
   const handleCopy = (prompt: string) => {
     navigator.clipboard.writeText(prompt);
@@ -151,7 +166,8 @@ export default function PromptHistoryTablePage() {
                     alt="Generated"
                     width={50}
                     height={50}
-                    className="w-16 h-16 rounded object-cover"
+                    className="w-16 h-16 rounded object-cover cursor-pointer hover:scale-105 transition-transform duration-300"
+                    onClick={() => setSelectedImage(item.image_url)}
                   />
                 </div>
                 <div className="col-span-5 text-muted/80 line-clamp-2 overflow-hidden md:truncate px-2">
@@ -201,6 +217,18 @@ export default function PromptHistoryTablePage() {
               </div>
             ))}
           </div>
+
+          {pagination.hasNext && (
+            <div className="flex justify-center mt-6 mb-10">
+              <button
+                onClick={handleLoadMore}
+                disabled={loading}
+                className="bg-zinc-900 border border-zinc-800 text-muted px-8 py-2 rounded-full hover:bg-zinc-800 transition disabled:opacity-50"
+              >
+                {loading ? "Loading..." : "Load More"}
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="max-w-5xl md:mx-auto border border-zinc-800 rounded-lg animate-pulse">
@@ -234,6 +262,43 @@ export default function PromptHistoryTablePage() {
           </div>
         </div>
       )}
+
+      {/* Fullscreen Lightbox Modal */}
+      <AnimatePresence>
+        {selectedImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedImage(null)}
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 md:p-10 cursor-zoom-out"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative max-w-7xl max-h-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img
+                src={selectedImage}
+                alt="Fullscreen AI Generated"
+                className="max-w-full max-h-[55vh] object-contain rounded-lg shadow-2xl border border-white/10"
+              />
+              
+              <button
+                onClick={() => setSelectedImage(null)}
+                className="absolute -top-12 -right-12 text-white/70 hover:text-white flex items-center gap-2 transition"
+              >
+                <span className="text-sm font-medium">Close</span>
+                <div className="bg-white/10 p-2 rounded-full border border-white/10">
+                  <X className="w-5 h-5" />
+                </div>
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

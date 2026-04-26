@@ -10,14 +10,18 @@ import { catchAsync } from "../utils/catchAsync";
 import { getSubscriptionPlans } from "../controllers/getPlans";
 import { createOrder, paymentSuccess } from "../controllers/paymentController";
 import { getUserDetails } from "../controllers/getUserDetails";
+import { apiLimiter, generationLimiter } from "../middleware/limiter";
 
 const router = Router();
+
+// Apply general rate limit to all routes
+router.use(apiLimiter);
 
 router.get("/plans", catchAsync(getSubscriptionPlans));
 
 router.get("/user-details", requireAuth, catchAsync(getUserDetails));
 
-router.post("/generate", requireAuth, catchAsync(generateImage));
+router.post("/generate", requireAuth, generationLimiter, catchAsync(generateImage));
 router.get("/history", requireAuth, catchAsync(getImageHistory));
 router.delete("/history/:id", requireAuth, catchAsync(deleteImageHistory));
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { SignInButton, SignedOut, useAuth } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
@@ -10,10 +10,45 @@ import { getMenuItems } from "@/data";
 import type { MenuItem } from "@/type";
 
 const Navbar = () => {
-  const { isSignedIn } = useAuth();
-  const [loading] = useState(false);
+  const { isSignedIn, getToken } = useAuth();
+  const [credits, setCredits] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
   
-  // Use the refactored menu items function to avoid hook errors
+  // Fix hydration errors by ensuring we only render dynamic auth content on the client
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Fetch credits whenever the user signs in
+  useEffect(() => {
+    if (!mounted) return;
+    
+    const fetchCredits = async () => {
+      if (!isSignedIn) {
+        setCredits(null);
+        return;
+      }
+      setLoading(true);
+      try {
+        const token = await getToken();
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user-details`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setCredits(data.creditsLeft);
+        }
+      } catch (err) {
+        console.error("Failed to fetch credits:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCredits();
+  }, [isSignedIn, getToken, mounted]);
+
   const menuItems = getMenuItems(isSignedIn !== undefined ? isSignedIn : null);
 
   return (
@@ -33,8 +68,10 @@ const Navbar = () => {
       />
 
       <div className="flex items-center justify-between relative z-10">
-        <div className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white/90 to-rose-300 text-2xl font-bold px-2 mx-4 cursor-default">
-          REX
+        <div className="flex items-center gap-2">
+          <div className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white/90 to-rose-300 text-2xl font-bold px-2 ml-4 cursor-default">
+            REX
+          </div>
         </div>
 
         <ul className="flex items-center gap-2">
@@ -74,18 +111,20 @@ const Navbar = () => {
             </motion.li>
           ))}
         </ul>
-
-        {/* Optional credits display */}
-        {/* <div className="text-muted-foreground px-4 py-2 min-w-max cursor-default">
-          Credits: 1000
-        </div> */}
-
-        {loading && (
-          <div className="flex items-center gap-2 text-sm text-gray-300 ml-4">
-            <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
-            <span>Fetching data...</span>
-          </div>
-        )}
+        
+        {/* credits display */}
+        {mounted && isSignedIn && (
+            <div className="flex items-center gap-1.5 bg-zinc-800/50 px-3 py-1 rounded-full border border-white/5 mr-4 shadow-inner group">
+              {loading ? (
+                <Loader2 className="w-3 h-3 animate-spin text-indigo-400" />
+              ) : (
+                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] group-hover:animate-pulse" />
+              )}
+              <span className="text-[11px] font-medium tracking-wider text-zinc-300 uppercase">
+                {credits !== null ? `${credits}` : "---"}
+              </span>
+            </div>
+          )}
       </div>
     </motion.nav>
   );
