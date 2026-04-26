@@ -19,30 +19,48 @@ declare global {
 
 export const generateImage = async (req: Request, res: Response) => {
   const { prompt } = req.body;
-  const user_id = req.user?.id || req.userId;
+  const user_id = req.userId;
 
   if (!prompt) {
     return res.status(400).json({ error: "Prompt is required" });
   }
 
-  console.log("👤 user_id in controller:", user_id);
-
   if (!user_id) {
-    console.warn("⚠️ Missing user_id in controller");
     return res.status(401).json({ error: "Unauthorized: User ID missing" });
   }
 
   try {
-    // Step 1: Generate image
+    // Step 1: Check credits
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("credits")
+      .eq("clerk_id", user_id)
+      .single();
+
+    if (userError || !user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (user.credits < 1) {
+      return res.status(403).json({ error: "Insufficient credits" });
+    }
+
+    // Step 2: Generate image
     const imageBuffer = await generateImageFromPrompt(prompt);
 
-    // Step 2: Upload to Supabase Storage
+    // Step 3: Upload to Supabase Storage
     const imageUrl = await uploadImageToBucket(imageBuffer);
 
-    // Step 3: Generate title
+    // Step 4: Generate title
     const title = await generateTitleFromPrompt(prompt);
 
-    // Step 4: Insert metadata into database
+    // Step 5: Deduct credit
+    await supabase
+      .from("users")
+      .update({ credits: user.credits - 1 })
+      .eq("clerk_id", user_id);
+
+    // Step 6: Insert metadata into database
     const { data: image, error } = await supabase
       .from("images")
       .insert([{ title, prompt, user_id, image_url: imageUrl }])

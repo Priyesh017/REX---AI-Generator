@@ -10,14 +10,12 @@ import { catchAsync } from "../utils/catchAsync";
 import { getSubscriptionPlans } from "../controllers/getPlans";
 import { createOrder, paymentSuccess } from "../controllers/paymentController";
 import { getUserDetails } from "../controllers/getUserDetails";
-import { handleUserCreatedWebhook } from "../controllers/createUser";
 
 const router = Router();
 
 router.get("/plans", catchAsync(getSubscriptionPlans));
 
 router.get("/user-details", requireAuth, catchAsync(getUserDetails));
-router.post('/clerk-webhook', catchAsync(handleUserCreatedWebhook));
 
 router.post("/generate", requireAuth, catchAsync(generateImage));
 router.get("/history", requireAuth, catchAsync(getImageHistory));

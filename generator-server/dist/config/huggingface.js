@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateImageFromPrompt = void 0;
 const inference_1 = require("@huggingface/inference");
-const env_1 = require("../config/env");
+const env_1 = require("./env");
 const hf = new inference_1.HfInference(env_1.env.huggingfaceToken);
 const generateImageFromPrompt = async (prompt) => {
     try {

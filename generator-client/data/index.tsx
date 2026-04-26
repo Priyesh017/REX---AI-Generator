@@ -1,8 +1,6 @@
-import { useAuth } from "@clerk/nextjs";
 import { Home, Coins, User, Sparkles, Settings} from "lucide-react";
 
-const { isSignedIn } = useAuth();
-export const menuItems = [
+export const getMenuItems = (isSignedIn: boolean | null) => [
     {
       icon: <Home className="h-5 w-5" />,
       label: "Home",

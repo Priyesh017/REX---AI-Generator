@@ -14,4 +14,4 @@ app.get("/", (req, res) => {
     res.send("Backend running ✅");
 });
 app.use("/api", routes_1.default);
-app.listen(env_1.env.port, () => console.log(`🚀 Server is running at http://localhost:${env_1.env.port}`));
+app.listen(env_1.env.port, "0.0.0.0", () => console.log(`🚀 Server is live on port ${env_1.env.port} (accessible by Render)`));

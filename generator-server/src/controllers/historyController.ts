@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import { supabase } from "../config/supabase";
 
 export const getImageHistory = async (req: Request, res: Response) => {
-  const user_id = req.user?.id || req.userId;
+  const user_id = req.userId;
 
   if (!user_id) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -30,7 +30,7 @@ export const getImageHistory = async (req: Request, res: Response) => {
 
 // DELETE /api/history/:id
 export const deleteImageHistory = async (req: Request, res: Response) => {
-  const user_id = req.user?.id;
+  const user_id = req.userId;
   const { id } = req.params;
 
   if (!user_id) {

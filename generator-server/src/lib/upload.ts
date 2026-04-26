@@ -7,11 +7,6 @@ export const uploadImageToBucket = async (
 ): Promise<string> => {
   const fileName = `${randomUUID()}.png`;
 
-  // Debug base64 (optional)
-  const base64 = imageBuffer.toString("base64");
-  console.log("🧪 Base64 Image Preview:");
-  console.log(`data:${contentType};base64,${base64}`);
-
   // Upload to Supabase Storage
   const { error: uploadError } = await supabase.storage
     .from("generated-images")

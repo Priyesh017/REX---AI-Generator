@@ -2,20 +2,32 @@ import { Request, Response } from "express";
 import { supabase } from "../config/supabase";
 
 export const getUserDetails = async (req: Request, res: Response) => {
-  const userId = req.query.userId as string;
+  const userId = req.userId;
 
   if (!userId) {
-    return res.status(400).json({ error: "Missing userId" });
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
   try {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("users")
       .select("current_plan, subscription_status, credits")
       .eq("clerk_id", userId)
       .single();
 
-    if (error) {
+    if (error && error.code === 'PGRST116') {
+      // Lazy upsert user on first authenticated request
+      const { data: newUser, error: insertError } = await supabase
+        .from("users")
+        .insert([{ clerk_id: userId, credits: 3 }])
+        .select("current_plan, subscription_status, credits")
+        .single();
+        
+      if (insertError) {
+        throw insertError;
+      }
+      data = newUser;
+    } else if (error) {
       return res.status(500).json({ error: error.message });
     }
 
@@ -25,21 +37,13 @@ export const getUserDetails = async (req: Request, res: Response) => {
 
     const { subscription_status, current_plan, credits } = data;
 
-    if (subscription_status !== "active") {
-      return res.json({
-        plan: null,
-        subscriptionStatus: "inactive",
-        creditsLeft: 0,
-        message: "No subscription plan available",
-      });
-    }
-
     return res.json({
       plan: current_plan,
-      subscriptionStatus: "active",
-      creditsLeft: credits,
+      subscriptionStatus: subscription_status,
+      creditsLeft: credits || 0,
     });
   } catch (err) {
+    console.error("getUserDetails Error:", err);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };

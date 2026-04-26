@@ -1,97 +1,20 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { SignInButton, SignedOut, useAuth, useUser } from "@clerk/nextjs";
+import { SignInButton, SignedOut, useAuth } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import type { Variants } from "framer-motion";
 import { Loader2 } from "lucide-react";
-import { menuItems } from "@/data";
+import { getMenuItems } from "@/data";
 import type { MenuItem } from "@/type";
 
 const Navbar = () => {
-  const { user } = useUser();
   const { isSignedIn } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [webhookTriggered, setWebhookTriggered] = useState(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const [loading] = useState(false);
   
-  // Trigger webhook after new user signs in
-  const triggerWebhook = useCallback(async () => {
-    if (!user?.id) {
-      console.error("User ID is missing");
-      return;
-    }
-
-    // Check if API URL is configured
-    if (!process.env.NEXT_PUBLIC_API_URL) {
-      console.error("API URL not configured");
-      return;
-    }
-
-    // Prevent multiple webhook calls
-    if (webhookTriggered) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setWebhookTriggered(true);
-
-      // Cancel any previous request
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-
-      // Create new abort controller
-      const abortController = new AbortController();
-      abortControllerRef.current = abortController;
-
-      // Sending request to the API
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/clerk-webhook`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: user.id,
-        }),
-        signal: abortController.signal,
-      });
-
-      // Check if the response is successful
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      // Handle response data
-      const data = await response.json();
-      console.log("User webhook triggered successfully!", data);
-    } catch (error) {
-      // Don't log error if request was aborted
-      if (error instanceof Error && error.name !== 'AbortError') {
-        console.error("Error triggering webhook:", error);
-        // Reset webhook triggered state on error to allow retry
-        setWebhookTriggered(false);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.id, webhookTriggered]);
-
-  // Trigger webhook once the user is signed in
-  useEffect(() => {
-    if (isSignedIn && user?.id && !webhookTriggered) {
-      triggerWebhook();
-    }
-
-    // Cleanup function
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [isSignedIn, user?.id, webhookTriggered, triggerWebhook]);
+  // Use the refactored menu items function to avoid hook errors
+  const menuItems = getMenuItems(isSignedIn !== undefined ? isSignedIn : null);
 
   return (
     <motion.nav
@@ -104,8 +27,7 @@ const Navbar = () => {
     >
       <motion.div
         className={cn(
-          "absolute -inset-2 rounded-3xl z-0 pointer-events-none",
-          getGradientClass()
+          "absolute -inset-2 rounded-3xl z-0 pointer-events-none"
         )}
         variants={navGlowVariants}
       />
@@ -136,10 +58,10 @@ const Navbar = () => {
                 {item.label === "Login" ? (
                   <SignedOut>
                     <SignInButton mode="modal">
-                      <button type="button" aria-label="Sign in">
+                      <div className="cursor-pointer">
                         <NavLink item={item} front />
                         <NavLink item={item} back />
-                      </button>
+                      </div>
                     </SignInButton>
                   </SignedOut>
                 ) : (
@@ -201,13 +123,13 @@ const NavLink: React.FC<NavLinkProps> = ({
   >
     <span
       className={cn(
-        "transition-colors duration-300 text-muted",
+        "transition-colors duration-300 text-muted-foreground",
         getHoverTextClass(item.iconColor)
       )}
     >
       {item.icon}
     </span>
-    <span className="hidden md:block group-hover:text-muted">
+    <span className="hidden md:block group-hover:text-white transition-colors">
       {item.label}
     </span>
   </motion.a>
@@ -228,13 +150,13 @@ const fadeUpVariants: Variants = {
 };
 
 const itemVariants: Variants = {
-  initial: { rotateX: 0, opacity: 1 },
-  hover: { rotateX: -90, opacity: 0 },
+  initial: { rotateX: 0, opacity: 1, pointerEvents: "auto" as const },
+  hover: { rotateX: -90, opacity: 0, pointerEvents: "none" as const },
 };
 
 const backVariants: Variants = {
-  initial: { rotateX: 90, opacity: 0 },
-  hover: { rotateX: 0, opacity: 1 },
+  initial: { rotateX: 90, opacity: 0, pointerEvents: "none" as const },
+  hover: { rotateX: 0, opacity: 1, pointerEvents: "auto" as const },
 };
 
 const glowVariants: Variants = {
@@ -278,6 +200,6 @@ function getHoverTextClass(color?: string): string {
   return colorMap[color] || "";
 }
 
-function getGradientClass(): string {
-  return "bg-gradient-to-r from-blue-400/30 via-purple-400/30 to-red-400/30";
-}
+// function getGradientClass(): string {
+//   return "bg-gradient-to-r from-blue-400/30 via-purple-400/30 to-red-400/30";
+// }

@@ -82,7 +82,6 @@ const Buy = () => {
           },
           body: JSON.stringify({
             planId,
-            clerkId: user.id,
           }),
         }
       );
@@ -101,7 +100,7 @@ const Buy = () => {
         name: "REX",
         description: "Buy Credits",
         order_id: data.order.id,
-        handler: async function () {
+        handler: async function (response: any) {
           try {
             const confirmRes = await fetch(
               `${process.env.NEXT_PUBLIC_API_URL}/payment-success`,
@@ -112,8 +111,9 @@ const Buy = () => {
                   Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
-                  orderId: data.order.id,
-                  clerkId: user.id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_signature: response.razorpay_signature,
                 }),
               }
             );
