@@ -1,63 +1,97 @@
 "use client";
 
+import { useEffect, useState, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
-import { SignInButton, SignedOut, useAuth } from "@clerk/nextjs";
+import { SignInButton, SignedOut, useAuth, useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import type { Variants } from "framer-motion";
-import { Home, Coins, User, Sparkles, Settings } from "lucide-react";
-
-interface MenuItem {
-  icon: React.ReactNode;
-  label: string;
-  href: string;
-  gradient: string;
-  iconColor: string;
-}
+import { Loader2 } from "lucide-react";
+import { menuItems } from "@/data";
+import type { MenuItem } from "@/type";
 
 const Navbar = () => {
+  const { user } = useUser();
   const { isSignedIn } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [webhookTriggered, setWebhookTriggered] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Trigger webhook after new user signs in
+  const triggerWebhook = useCallback(async () => {
+    if (!user?.id) {
+      console.error("User ID is missing");
+      return;
+    }
 
-  const menuItems = [
-    {
-      icon: <Home className="h-5 w-5" />,
-      label: "Home",
-      href: "/",
-      gradient:
-        "radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(37,99,235,0.06) 50%, rgba(29,78,216,0) 100%)",
-      iconColor: "text-blue-500",
-    },
-    {
-      icon: <Coins className="h-5 w-5" />,
-      label: "Pricing",
-      href: "/buy",
-      gradient:
-        "radial-gradient(circle, rgba(249,115,22,0.15) 0%, rgba(234,88,12,0.06) 50%, rgba(194,65,12,0) 100%)",
-      iconColor: "text-orange-500",
-    },
-    {
-      icon: <Sparkles className="h-5 w-5" />,
-      label: "Generator",
-      href: "/generate",
-      gradient:
-        "radial-gradient(circle, rgba(34,197,94,0.15) 0%, rgba(22,163,74,0.06) 50%, rgba(21,128,61,0) 100%)",
-      iconColor: "text-green-500",
-    },
-    {
-      icon:
-        isSignedIn === null ? (
-          <User className="h-5 w-5" />
-        ) : isSignedIn ? (
-          <Settings className="h-5 w-5" />
-        ) : (
-          <User className="h-5 w-5" />
-        ),
-      label: isSignedIn === null ? "Login" : isSignedIn ? "Profile" : "Login",
-      href: isSignedIn === null ? "#" : isSignedIn ? "/profile" : "#",
-      gradient:
-        "radial-gradient(circle, rgba(239,68,68,0.15) 0%, rgba(220,38,38,0.06) 50%, rgba(185,28,28,0) 100%)",
-      iconColor: "text-red-500",
-    },
-  ];
+    // Check if API URL is configured
+    if (!process.env.NEXT_PUBLIC_API_URL) {
+      console.error("API URL not configured");
+      return;
+    }
+
+    // Prevent multiple webhook calls
+    if (webhookTriggered) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setWebhookTriggered(true);
+
+      // Cancel any previous request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      // Create new abort controller
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+
+      // Sending request to the API
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/clerk-webhook`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: user.id,
+        }),
+        signal: abortController.signal,
+      });
+
+      // Check if the response is successful
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      // Handle response data
+      const data = await response.json();
+      console.log("User webhook triggered successfully!", data);
+    } catch (error) {
+      // Don't log error if request was aborted
+      if (error instanceof Error && error.name !== 'AbortError') {
+        console.error("Error triggering webhook:", error);
+        // Reset webhook triggered state on error to allow retry
+        setWebhookTriggered(false);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id, webhookTriggered]);
+
+  // Trigger webhook once the user is signed in
+  useEffect(() => {
+    if (isSignedIn && user?.id && !webhookTriggered) {
+      triggerWebhook();
+    }
+
+    // Cleanup function
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [isSignedIn, user?.id, webhookTriggered, triggerWebhook]);
 
   return (
     <motion.nav
@@ -83,7 +117,7 @@ const Navbar = () => {
 
         <ul className="flex items-center gap-2">
           {menuItems.map((item, idx) => (
-            <motion.li key={idx} className="relative">
+            <motion.li key={item.href || idx} className="relative">
               <motion.div
                 className="block rounded-xl group relative"
                 style={{ perspective: "600px" }}
@@ -93,20 +127,21 @@ const Navbar = () => {
                 <motion.div
                   className="absolute inset-0 z-0 pointer-events-none rounded-xl"
                   variants={glowVariants}
-                  style={{ background: item.gradient, opacity: 0 }}
+                  style={{ 
+                    background: item.gradient || "transparent", 
+                    opacity: 0 
+                  }}
                 />
 
                 {item.label === "Login" ? (
-                  <>
-                    <SignedOut>
-                      <SignInButton mode="modal">
-                        <button>
-                          <NavLink item={item} front />
-                          <NavLink item={item} back />
-                        </button>
-                      </SignInButton>
-                    </SignedOut>
-                  </>
+                  <SignedOut>
+                    <SignInButton mode="modal">
+                      <button type="button" aria-label="Sign in">
+                        <NavLink item={item} front />
+                        <NavLink item={item} back />
+                      </button>
+                    </SignInButton>
+                  </SignedOut>
                 ) : (
                   <>
                     <NavLink item={item} front />
@@ -117,9 +152,18 @@ const Navbar = () => {
             </motion.li>
           ))}
         </ul>
+
+        {/* Optional credits display */}
         {/* <div className="text-muted-foreground px-4 py-2 min-w-max cursor-default">
           Credits: 1000
         </div> */}
+
+        {loading && (
+          <div className="flex items-center gap-2 text-sm text-gray-300 ml-4">
+            <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+            <span>Fetching data...</span>
+          </div>
+        )}
       </div>
     </motion.nav>
   );
@@ -144,8 +188,6 @@ const NavLink: React.FC<NavLinkProps> = ({
       "flex items-center gap-2 px-4 py-2 z-50 bg-transparent text-muted-foreground transition-colors rounded-xl",
       {
         "relative inset-auto": front,
-      },
-      {
         "absolute inset-0": back,
       }
     )}
@@ -165,7 +207,9 @@ const NavLink: React.FC<NavLinkProps> = ({
     >
       {item.icon}
     </span>
-    <span className="hidden md:block group-hover:text-muted">{item.label}</span>
+    <span className="hidden md:block group-hover:text-muted">
+      {item.label}
+    </span>
   </motion.a>
 );
 
@@ -220,17 +264,20 @@ const sharedTransition = {
   duration: 0.5,
 };
 
-function getHoverTextClass(color: string) {
-  return (
-    {
-      "text-blue-500": "group-hover:text-blue-500",
-      "text-orange-500": "group-hover:text-orange-500",
-      "text-green-500": "group-hover:text-green-500",
-      "text-red-500": "group-hover:text-red-500",
-    }[color] || ""
-  );
+// Helper functions
+function getHoverTextClass(color?: string): string {
+  if (!color) return "";
+  
+  const colorMap: Record<string, string> = {
+    "text-blue-500": "group-hover:text-blue-500",
+    "text-orange-500": "group-hover:text-orange-500",
+    "text-green-500": "group-hover:text-green-500",
+    "text-red-500": "group-hover:text-red-500",
+  };
+  
+  return colorMap[color] || "";
 }
 
-function getGradientClass() {
-  return "via-blue-400/30 via-30% via-purple-400/30 via-60% via-red-400/30 via-90%";
+function getGradientClass(): string {
+  return "bg-gradient-to-r from-blue-400/30 via-purple-400/30 to-red-400/30";
 }

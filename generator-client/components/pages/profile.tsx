@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { UserButton, useUser } from "@clerk/nextjs";
+import { UserButton, useUser, useAuth } from "@clerk/nextjs";
 import { Loader2 } from "lucide-react";
 
 interface Subscription {
@@ -14,28 +14,51 @@ interface Subscription {
 
 export default function UserProfilePage() {
   const { user, isLoaded } = useUser();
+  const { getToken } = useAuth(); 
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loadingSub, setLoadingSub] = useState(true);
 
   useEffect(() => {
     const fetchSubscription = async () => {
-      if (!user) return;
+      if (!user?.id) return; 
+
+      setLoadingSub(true); 
 
       try {
+        const token = await getToken(); 
+
+        if (!token) {
+          console.error("Authentication token is missing.");
+          return;
+        }
+
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/user-details?userId=${user.id}`
+          `${process.env.NEXT_PUBLIC_API_URL}/user-details?userId=${user.id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`, // Pass the token in the Authorization header
+            },
+          }
         );
+
+        if (!res.ok) {
+          throw new Error("Failed to fetch subscription details.");
+        }
+
         const data = await res.json();
         setSubscription(data);
       } catch (err) {
         console.error("Error fetching subscription:", err);
+        setSubscription(null); // Optionally set to null or a specific error state
       } finally {
-        setLoadingSub(false);
+        setLoadingSub(false); // Set loading state to false after fetch attempt
       }
     };
 
-    if (isLoaded) fetchSubscription();
-  }, [user, isLoaded]);
+    if (isLoaded && user?.id) {
+      fetchSubscription();
+    }
+  }, [user, isLoaded, getToken]);
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-[#0f0c29] via-[#302b63] to-[#24243e] px-4">
@@ -61,7 +84,7 @@ export default function UserProfilePage() {
                 <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-cyan-500" />
               </div>
 
-              {/* Absolute Tooltip */}
+              {/* Tooltip */}
               <span className="absolute min-w-max right-full top-1/2 -translate-y-1/2 mr-2 px-2 py-1 bg-white/10 text-white/90 text-xs rounded-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 View Profile
               </span>
