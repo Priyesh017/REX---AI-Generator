@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -44,7 +44,7 @@ export default function PromptHistoryTablePage() {
 
   const { getToken } = useAuth();
 
-  const fetchHistory = async (pageToFetch: number, isLoadMore: boolean = false) => {
+  const fetchHistory = useCallback(async (pageToFetch: number, isLoadMore: boolean = false) => {
     if (!isLoadMore) setLoading(true);
     try {
       const token = await getToken();
@@ -69,11 +69,11 @@ export default function PromptHistoryTablePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken]);
 
   useEffect(() => {
     fetchHistory(1);
-  }, [getToken]);
+  }, [fetchHistory]);
 
   const handleLoadMore = () => {
     fetchHistory(pagination.page + 1, true);
@@ -280,9 +280,11 @@ export default function PromptHistoryTablePage() {
               className="relative max-w-7xl max-h-full"
               onClick={(e) => e.stopPropagation()}
             >
-              <img
+              <Image
                 src={selectedImage}
                 alt="Fullscreen AI Generated"
+                width={1200}
+                height={800}
                 className="max-w-full max-h-[55vh] object-contain rounded-lg shadow-2xl border border-white/10"
               />
               

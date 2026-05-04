@@ -686,7 +686,7 @@ export default function AdminDashboard() {
                         </label>
                         <div className="bg-zinc-900/50 p-4 rounded-2xl border border-white/5">
                           <p className="text-zinc-300 text-xs italic leading-relaxed">
-                            "{selectedImage.prompt}"
+                            &quot;{selectedImage.prompt}&quot;
                           </p>
                         </div>
                       </div>
@@ -823,7 +823,7 @@ function NavItem({
   active,
   onClick,
 }: {
-  icon: any;
+  icon: React.ReactNode;
   label: string;
   active: boolean;
   onClick: () => void;
@@ -849,12 +849,12 @@ function MetricCard({
   span = 1,
 }: {
   title: string;
-  value: any;
-  icon: any;
+  value: string | number;
+  icon: React.ReactNode;
   color: string;
   span?: number;
 }) {
-  const colors: any = {
+  const colors: Record<string, string> = {
     emerald: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
     indigo: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
     purple: "text-purple-400 bg-purple-400/10 border-purple-500/20",
@@ -876,24 +876,3 @@ function MetricCard({
   );
 }
 
-function DetailRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: any;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-center justify-between p-4 bg-zinc-900/30 rounded-2xl border border-white/5">
-      <div className="flex items-center gap-3">
-        <div className="text-zinc-600">{icon}</div>
-        <span className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">
-          {label}
-        </span>
-      </div>
-      <span className="text-sm font-bold text-zinc-300 font-mono">{value}</span>
-    </div>
-  );
-}
