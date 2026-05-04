@@ -1,32 +1,44 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-// Define public routes explicitly
-const isPublicRoute = createRouteMatcher(["/", "/generate", "/buy"]);
+// Public routes — accessible without authentication
+const isPublicRoute = createRouteMatcher([
+  "/",           // home / landing
+  "/generate",   // generation page (auth encouraged but optional)
+  "/buy",        // subscription/payment page
+  "/u/(.*)",     // public creator profiles
+  "/posts/(.*)", // public post detail pages
+  "/explore",    // explore/discover (Phase 2)
+]);
+
+// Auth-required routes
+const isAuthRoute = createRouteMatcher([
+  "/studio(.*)",
+  "/profile(.*)",
+  "/notifications(.*)",
+  "/settings(.*)",
+  "/admin(.*)",
+]);
 
 export default clerkMiddleware(async (auth, req) => {
-  // Allow public routes without auth
+  // Public routes: no auth check needed
   if (isPublicRoute(req)) return;
 
-  // Await auth and check if user is authenticated
-  const { userId } = await auth();
-
-  if (!userId) {
-    // Redirect unauthenticated users to /login
-    const url = new URL("/", req.url); // or "/login" if you prefer
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: url.toString(),
-      },
-    });
+  // Auth-required routes: redirect to home if not signed in
+  if (isAuthRoute(req)) {
+    const { userId } = await auth();
+    if (!userId) {
+      const url = new URL("/", req.url);
+      return new Response(null, {
+        status: 302,
+        headers: { Location: url.toString() },
+      });
+    }
   }
 });
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run for API routes
     "/(api|trpc)(.*)",
   ],
 };

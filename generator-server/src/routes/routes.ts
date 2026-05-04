@@ -1,48 +1,14 @@
 // src/routes/routes.ts
-import { Router } from "express";
-import { generateImage } from "../controllers/generateController";
-import {
-  getImageHistory,
-  deleteImageHistory,
-} from "../controllers/historyController";
-import { requireAuth } from "../middleware/auth";
-import { catchAsync } from "../utils/catchAsync";
-import { getSubscriptionPlans } from "../controllers/getPlans";
-import { createOrder, paymentSuccess, paymentWebhook } from "../controllers/paymentController";
-import { getUserDetails } from "../controllers/getUserDetails";
-import { apiLimiter, generationLimiter } from "../middleware/limiter";
-import { 
-  getAdminStats, 
-  getAdminUsers, 
-  updateUserDetails, 
-  getAdminTransactions, 
-  getAdminImages 
-} from "../controllers/adminController";
-import { requireAdmin } from "../middleware/adminAuth";
+// LEGACY: This file is kept for reference only.
+// The actual router is now src/routes/index.ts, mounted in server.ts.
+// All routes have been migrated to domain routers in src/routes/.
+//
+// If you're looking for a route, check:
+//   - src/routes/index.ts     (root + backward-compat aliases)
+//   - src/routes/profile.routes.ts
+//   - src/routes/studio.routes.ts
+//
+// Admin and billing routes remain mounted inline in index.ts
+// until they are refactored into their own domain routers.
 
-const router = Router();
-
-// Apply general rate limit to all routes
-router.use(apiLimiter);
-
-router.get("/plans", catchAsync(getSubscriptionPlans));
-
-router.get("/user-details", requireAuth, catchAsync(getUserDetails));
-
-router.post("/generate", requireAuth, generationLimiter, catchAsync(generateImage));
-router.get("/history", requireAuth, catchAsync(getImageHistory));
-router.delete("/history/:id", requireAuth, catchAsync(deleteImageHistory));
-
-router.post("/create-order", requireAuth, catchAsync(createOrder));
-router.post("/payment-success", requireAuth, catchAsync(paymentSuccess));
-router.post("/payment-webhook", catchAsync(paymentWebhook));
-
-// Admin Routes
-router.get("/admin/stats", requireAuth, requireAdmin, catchAsync(getAdminStats));
-router.get("/admin/users", requireAuth, requireAdmin, catchAsync(getAdminUsers));
-router.get("/admin/transactions", requireAuth, requireAdmin, catchAsync(getAdminTransactions));
-router.get("/admin/images", requireAuth, requireAdmin, catchAsync(getAdminImages));
-router.post("/admin/update-user", requireAuth, requireAdmin, catchAsync(updateUserDetails));
-
-
-export default router;
+export {}; // empty — consumed by index.ts
