@@ -9,6 +9,7 @@ import {
   useClerk,
 } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
+import NextImage from "next/image";
 import {
   Users,
   ImageIcon,
@@ -16,19 +17,14 @@ import {
   Search,
   RefreshCcw,
   Edit,
-  Save,
   X,
-  TrendingUp,
   LayoutDashboard,
   UserCircle,
   Settings,
-  ChevronRight,
   Loader2,
   CreditCard,
   Image as GalleryIcon,
-  ExternalLink,
   Download,
-  Phone,
   LogOut,
   Monitor,
 } from "lucide-react";
@@ -78,6 +74,11 @@ interface GeneratedImage {
   user_name: string;
 }
 
+interface ChartData {
+  date: string;
+  revenue: number;
+}
+
 type DashboardTab = "overview" | "users" | "orders" | "gallery" | "account";
 
 export default function AdminDashboard() {
@@ -86,7 +87,7 @@ export default function AdminDashboard() {
   const { user: admin } = useUser();
   const [activeTab, setActiveTab] = useState<DashboardTab>("overview");
   const [stats, setStats] = useState<AdminStats | null>(null);
-  const [chartData, setChartData] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<ChartData[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [images, setImages] = useState<GeneratedImage[]>([]);
@@ -327,10 +328,12 @@ export default function AdminDashboard() {
                   Root Access
                 </p>
               </div>
-              <img
-                src={admin?.imageUrl}
+              <NextImage
+                src={admin?.imageUrl || ""}
+                width={40}
+                height={40}
                 className="w-10 h-10 rounded-xl border border-white/10"
-                alt=""
+                alt="Admin"
               />
               <div className="absolute inset-0 opacity-0">
                 <UserButton />
@@ -601,10 +604,12 @@ export default function AdminDashboard() {
                       className="group relative bg-[#0C0C0C] rounded-2xl border border-white/5 overflow-hidden cursor-pointer"
                       onClick={() => setSelectedImage(img)}
                     >
-                      <img
+                      <NextImage
                         src={img.image_url}
+                        width={400}
+                        height={400}
                         className="w-full aspect-square object-cover"
-                        alt=""
+                        alt={img.prompt}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-4 flex flex-col justify-end">
                         <p className="text-[10px] text-white font-bold line-clamp-1">
@@ -647,10 +652,12 @@ export default function AdminDashboard() {
             >
               <div className="flex flex-col lg:flex-row gap-8">
                 <div className="flex-1 bg-black rounded-2xl overflow-hidden border border-white/5 shadow-2xl min-h-[300px] flex items-center justify-center">
-                  <img
+                  <NextImage
                     src={selectedImage.image_url}
+                    width={1024}
+                    height={1024}
                     className="max-w-full max-h-[70vh] object-contain"
-                    alt=""
+                    alt={selectedImage.prompt}
                   />
                 </div>
                 <div className="w-full lg:w-80 space-y-6 shrink-0">
