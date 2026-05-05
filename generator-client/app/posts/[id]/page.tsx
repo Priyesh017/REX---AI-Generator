@@ -11,8 +11,7 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
-  // Phase 2: fetch real post data here for dynamic OG tags
+  // await params; // Phase 2: id will be needed here to fetch real post data for dynamic OG tags
   return {
     title: "Post — REX",
     description: "View this AI-generated image on REX.",
