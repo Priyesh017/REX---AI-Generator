@@ -10,7 +10,7 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata(): Promise<Metadata> {
   // await params; // Phase 2: id will be needed here to fetch real post data for dynamic OG tags
   return {
     title: "Post — REX",
