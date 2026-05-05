@@ -17,6 +17,7 @@ import {
   Loader2,
   MoreVertical,
   RefreshCcw,
+  Send,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -28,6 +29,7 @@ import {
 import toast from "react-hot-toast";
 import { studioApi, type DraftAsset } from "@/lib/api/studio.api";
 import { ApiRequestError } from "@/lib/api/client";
+import PublishModal from "./PublishModal";
 
 export default function DraftsPanel() {
   const { getToken } = useAuth();
@@ -37,6 +39,9 @@ export default function DraftsPanel() {
   const [hasNext, setHasNext] = useState(false);
   const [page, setPage] = useState(1);
   const [lightboxAsset, setLightboxAsset] = useState<DraftAsset | null>(null);
+  const [publishingAsset, setPublishingAsset] = useState<DraftAsset | null>(
+    null,
+  );
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,13 +59,15 @@ export default function DraftsPanel() {
         const result = await api.listDrafts(pageNum, 12);
 
         setAssets((prev) =>
-          append ? [...prev, ...result.assets] : result.assets
+          append ? [...prev, ...result.assets] : result.assets,
         );
         setHasNext(result.meta.pagination.hasNext);
         setPage(pageNum);
       } catch (err) {
         const msg =
-          err instanceof ApiRequestError ? err.message : "Failed to load drafts";
+          err instanceof ApiRequestError
+            ? err.message
+            : "Failed to load drafts";
         if (!append) setError(msg);
         else toast.error(msg);
       } finally {
@@ -68,7 +75,7 @@ export default function DraftsPanel() {
         setLoadingMore(false);
       }
     },
-    [getToken]
+    [getToken],
   );
 
   useEffect(() => {
@@ -96,7 +103,7 @@ export default function DraftsPanel() {
     toast.success("Prompt copied");
   };
 
-  const handleDownload = async (url: string, prompt?: string) => {
+  const handleDownload = async (url: string) => {
     try {
       const res = await fetch(url);
       const blob = await res.blob();
@@ -173,14 +180,30 @@ export default function DraftsPanel() {
                 asset={asset}
                 isDeleting={deletingId === asset.id}
                 onPreview={() => setLightboxAsset(asset)}
+                onPublish={() => setPublishingAsset(asset)}
                 onDelete={() => handleDelete(asset.id)}
                 onCopyPrompt={() => handleCopyPrompt(asset.prompt)}
-                onDownload={() => handleDownload(asset.image_url, asset.prompt)}
+                onDownload={() => handleDownload(asset.image_url)}
               />
             </motion.div>
           ))}
         </AnimatePresence>
       </div>
+
+      {/* Publish Modal */}
+      {publishingAsset && (
+        <PublishModal
+          isOpen={!!publishingAsset}
+          draft={publishingAsset}
+          onClose={() => setPublishingAsset(null)}
+          onSuccess={() => {
+            setAssets((prev) =>
+              prev.filter((a) => a.id !== publishingAsset.id),
+            );
+            setPublishingAsset(null);
+          }}
+        />
+      )}
 
       {/* Load more */}
       {hasNext && (
@@ -254,7 +277,9 @@ export default function DraftsPanel() {
                   </button>
                   <button
                     onClick={() =>
-                      handleDownload(lightboxAsset.image_url, lightboxAsset.prompt)
+                      handleDownload(
+                        lightboxAsset.image_url,
+                      )
                     }
                     className="p-2 rounded-xl bg-white text-zinc-900 hover:bg-zinc-100 transition"
                     title="Download"
@@ -277,6 +302,7 @@ interface DraftCardProps {
   asset: DraftAsset;
   isDeleting: boolean;
   onPreview: () => void;
+  onPublish: () => void;
   onDelete: () => void;
   onCopyPrompt: () => void;
   onDownload: () => void;
@@ -286,6 +312,7 @@ function DraftCard({
   asset,
   isDeleting,
   onPreview,
+  onPublish,
   onDelete,
   onCopyPrompt,
   onDownload,
@@ -319,6 +346,13 @@ function DraftCard({
               align="end"
               className="w-44 bg-zinc-900/95 border-zinc-700/80 backdrop-blur-xl text-sm rounded-xl shadow-xl"
             >
+              <DropdownMenuItem
+                onClick={onPublish}
+                className="gap-2 text-indigo-400 focus:text-indigo-300 focus:bg-indigo-900/30 rounded-lg cursor-pointer"
+              >
+                <Send className="w-3.5 h-3.5" /> Publish
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-zinc-700/60 my-1" />
               <DropdownMenuItem
                 onClick={onCopyPrompt}
                 className="gap-2 text-zinc-300 focus:text-white focus:bg-zinc-800 rounded-lg cursor-pointer"

@@ -6,8 +6,7 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Post — REX",
     description: "View this AI-generated image on REX.",

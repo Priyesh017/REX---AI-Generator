@@ -23,10 +23,12 @@ import {
   getImageUrlFromCookie,
   clearImageUrlCookie,
 } from "@/lib/imageCache";
+import PublishModal from "./PublishModal";
 
 export default function GeneratorPanel() {
   const [prompt, setPrompt] = useState("");
   const [result, setResult] = useState<DraftAsset | null>(null);
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [creditsLeft, setCreditsLeft] = useState<number | null>(null);
   const { getToken, isSignedIn, isLoaded } = useAuth();
@@ -244,11 +246,9 @@ export default function GeneratorPanel() {
               <Download className="w-4 h-4" />
               Download
             </button>
-            {/* Publish CTA — Phase 2 */}
             <button
-              disabled
-              title="Publish to feed coming soon"
-              className="flex items-center gap-2 border border-indigo-700/50 text-indigo-400 text-sm px-5 py-2.5 rounded-full opacity-50 cursor-not-allowed"
+              onClick={() => setIsPublishModalOpen(true)}
+              className="flex items-center gap-2 border border-indigo-700/50 text-indigo-400 text-sm px-5 py-2.5 rounded-full hover:bg-indigo-900/20 transition-all duration-200"
             >
               <Send className="w-4 h-4" />
               Publish
@@ -262,6 +262,20 @@ export default function GeneratorPanel() {
             </a>
           </p>
         </div>
+      )}
+
+      {/* Publish Modal */}
+      {result && (
+        <PublishModal
+          isOpen={isPublishModalOpen}
+          draft={result}
+          onClose={() => setIsPublishModalOpen(false)}
+          onSuccess={() => {
+            setResult(null);
+            clearImageUrlCookie();
+            toast.success("Image moved to your public feed");
+          }}
+        />
       )}
     </div>
   );

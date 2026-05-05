@@ -1,15 +1,61 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { SignInButton, SignedOut, useAuth } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
-import type { Variants } from "framer-motion";
 import { Loader2, Zap } from "lucide-react";
 import { getMenuItems } from "@/data";
 import type { MenuItem } from "@/type";
 import { creditsApi } from "@/lib/api/credits";
+
+const fadeUpVariants: Variants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: (i: number = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 1,
+      delay: 0.5 + i * 0.2,
+      ease: [0.25, 0.4, 0.25, 1],
+    },
+  }),
+};
+
+const navGlowVariants: Variants = {
+  hover: {
+    opacity: 1,
+    scale: 1.05,
+    transition: { duration: 0.4 },
+  },
+};
+
+const glowVariants: Variants = {
+  initial: { opacity: 0, scale: 0.8 },
+  hover: { opacity: 1, scale: 1, transition: { duration: 0.3 } },
+};
+
+const itemVariants: Variants = {
+  initial: { rotateX: 0, y: 0 },
+  hover: { rotateX: -90, y: -5 },
+};
+
+const backVariants: Variants = {
+  initial: { rotateX: 90, y: 5 },
+  hover: { rotateX: 0, y: 0 },
+};
+
+const sharedTransition = {
+  type: "spring",
+  stiffness: 260,
+  damping: 20,
+} as const;
+
+const getHoverTextClass = (colorClass: string) => {
+  return colorClass.replace("text-", "group-hover:text-");
+};
 
 const Navbar = () => {
   const { isSignedIn, getToken } = useAuth();
@@ -22,7 +68,6 @@ const Navbar = () => {
     setMounted(true);
   }, []);
 
-  // Fetch credits whenever the user signs in using the new API endpoint
   useEffect(() => {
     if (!mounted || !isSignedIn) {
       setCredits(null);
@@ -37,7 +82,6 @@ const Navbar = () => {
         const creditsLeft = await api.getCredits();
         if (!cancelled) setCredits(creditsLeft);
       } catch {
-        // Non-critical — silently fail, don't spam console on 401
         if (!cancelled) setCredits(null);
       } finally {
         if (!cancelled) setLoading(false);
@@ -65,14 +109,12 @@ const Navbar = () => {
       />
 
       <div className="flex items-center justify-between relative z-10">
-        {/* Logo */}
-        <a href="/" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           <div className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white/90 to-rose-300 text-2xl font-bold px-2 ml-4 cursor-pointer select-none">
             REX
           </div>
-        </a>
+        </Link>
 
-        {/* Nav links */}
         <ul className="flex items-center gap-1">
           {menuItems.map((item) => {
             const isActive =
@@ -118,9 +160,8 @@ const Navbar = () => {
           })}
         </ul>
 
-        {/* Credits pill */}
         {mounted && isSignedIn && (
-          <a
+          <Link
             href="/buy"
             className="flex items-center gap-1.5 bg-zinc-800/50 px-3 py-1.5 rounded-full border border-white/5 mr-4 shadow-inner group hover:border-indigo-500/30 transition-all"
             title="Credits remaining — click to buy more"
@@ -147,14 +188,12 @@ const Navbar = () => {
             >
               {credits !== null ? credits : "—"}
             </span>
-          </a>
+          </Link>
         )}
       </div>
     </motion.nav>
   );
 };
-
-export default Navbar;
 
 interface NavLinkProps {
   item: MenuItem;
@@ -168,105 +207,42 @@ const NavLink: React.FC<NavLinkProps> = ({
   front = false,
   back = false,
   isActive = false,
-}) => (
-  <motion.a
-    href={item.href}
-    className={cn(
-      "flex items-center gap-2 px-4 py-2 z-50 bg-transparent transition-colors rounded-xl",
-      isActive ? "text-white" : "text-muted-foreground",
-      {
-        "relative inset-auto": front,
-        "absolute inset-0": back,
-      }
-    )}
-    variants={front ? itemVariants : backVariants}
-    transition={sharedTransition}
-    style={{
-      transformStyle: "preserve-3d",
-      transformOrigin: front ? "center bottom" : "center top",
-      rotateX: back ? 90 : undefined,
-    }}
-  >
-    <span
+}) => {
+  const content = (
+    <motion.div
       className={cn(
-        "transition-colors duration-300",
-        isActive ? item.iconColor : "text-muted-foreground",
-        getHoverTextClass(item.iconColor)
+        "flex items-center gap-2 px-4 py-2 z-50 bg-transparent transition-colors rounded-xl",
+        isActive ? "text-white" : "text-muted-foreground",
+        {
+          "relative inset-auto": front,
+          "absolute inset-0": back,
+        }
       )}
+      variants={front ? itemVariants : backVariants}
+      transition={sharedTransition}
+      style={{
+        transformStyle: "preserve-3d",
+        transformOrigin: front ? "center bottom" : "center top",
+        rotateX: back ? 90 : undefined,
+      }}
     >
-      {item.icon}
-    </span>
-    <span className={cn("hidden md:block transition-colors", isActive ? "text-white" : "group-hover:text-white")}>
-      {item.label}
-    </span>
-  </motion.a>
-);
+      <span
+        className={cn(
+          "transition-colors duration-300",
+          isActive ? item.iconColor : "text-muted-foreground",
+          getHoverTextClass(item.iconColor)
+        )}
+      >
+        {item.icon}
+      </span>
+      <span className={cn("hidden md:block transition-colors", isActive ? "text-white" : "group-hover:text-white")}>
+        {item.label}
+      </span>
+    </motion.div>
+  );
 
-// Motion variants
-const fadeUpVariants: Variants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: (i: number = 0) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 1,
-      delay: 0.5 + i * 0.2,
-      ease: [0.25, 0.4, 0.25, 1],
-    },
-  }),
+  if (item.href === "#") return content;
+  return <Link href={item.href}>{content}</Link>;
 };
 
-const itemVariants: Variants = {
-  initial: { rotateX: 0, opacity: 1, pointerEvents: "auto" as const },
-  hover: { rotateX: -90, opacity: 0, pointerEvents: "none" as const },
-};
-
-const backVariants: Variants = {
-  initial: { rotateX: 90, opacity: 0, pointerEvents: "none" as const },
-  hover: { rotateX: 0, opacity: 1, pointerEvents: "auto" as const },
-};
-
-const glowVariants: Variants = {
-  initial: { opacity: 0, scale: 0.8 },
-  hover: {
-    opacity: 1,
-    scale: 2,
-    transition: {
-      opacity: { duration: 0.5, ease: [0.4, 0, 0.2, 1] },
-      scale: { duration: 0.5, type: "spring", stiffness: 300, damping: 25 },
-    },
-  },
-};
-
-const navGlowVariants: Variants = {
-  initial: { opacity: 0 },
-  hover: {
-    opacity: 1,
-    transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] },
-  },
-};
-
-const sharedTransition = {
-  type: "spring" as const,
-  stiffness: 100,
-  damping: 20,
-  duration: 0.5,
-};
-
-// Helper functions
-function getHoverTextClass(color?: string): string {
-  if (!color) return "";
-  
-  const colorMap: Record<string, string> = {
-    "text-blue-500": "group-hover:text-blue-500",
-    "text-orange-500": "group-hover:text-orange-500",
-    "text-green-500": "group-hover:text-green-500",
-    "text-red-500": "group-hover:text-red-500",
-  };
-  
-  return colorMap[color] || "";
-}
-
-// function getGradientClass(): string {
-//   return "bg-gradient-to-r from-blue-400/30 via-purple-400/30 to-red-400/30";
-// }
+export default Navbar;

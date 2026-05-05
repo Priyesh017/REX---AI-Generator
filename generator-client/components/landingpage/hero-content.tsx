@@ -21,7 +21,7 @@ const fadeUpVariants: Variants = {
     transition: {
       duration: 1,
       delay: 0.5 + i * 0.2,
-      ease: [0.25, 0.4, 0.25, 1],
+      ease: [0.25, 0.4, 0.25, 1] as [number, number, number, number],
     },
   }),
 };
@@ -73,8 +73,8 @@ const HeroContent = () => {
           animate="visible"
         >
           <p className="text-base sm:text-lg md:text-xl text-white/40 mb-8 leading-relaxed font-light tracking-wide max-w-xl mx-auto px-4">
-            Unleash your creativity with AI. Turn your imagination into visual
-            art in seconds - just type, watch the match happen.
+            Unleash your creativity. Generate stunning AI art, build your studio, 
+            and share your masterpieces with a community of creators.
           </p>
         </motion.div>
         <motion.div
@@ -83,7 +83,7 @@ const HeroContent = () => {
           initial="hidden"
           animate="visible"
         >
-          <BreathingNeonButton onClick={() => router.push("/generate")} />
+          <BreathingNeonButton onClick={() => router.push("/studio")} />
         </motion.div>
       </div>
     </div>

@@ -1,87 +1,180 @@
 "use client";
 
-// components/profile/PublicProfilePage.tsx
-// Public creator profile — shows username, bio placeholder, and draft gallery.
-// This is the social-facing profile, not the account settings page.
-// Phase 2: Will show published posts, follower counts, follow button.
+import { useEffect, useState } from "react";
+import { useAuth } from "@clerk/nextjs";
+import { motion, type Variants } from "framer-motion";
+import { 
+  Grid3X3, 
+  ImageOff, 
+  Loader2, 
+  Calendar, 
+  Sparkles,
+  Share2
+} from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { postApi, type Post } from "@/lib/api/post.api";
+import { ApiRequestError } from "@/lib/api/client";
+import toast from "react-hot-toast";
 
-import { User, ImageOff } from "lucide-react";
-
-interface Props {
+interface PublicProfilePageProps {
   username: string;
 }
 
-export default function PublicProfilePage({ username }: Props) {
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: (i: number = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, delay: i * 0.1, ease: [0.25, 0.4, 0.25, 1] as [number, number, number, number] },
+  }),
+};
+
+export default function PublicProfilePage({ username }: PublicProfilePageProps) {
+  const { getToken } = useAuth();
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      setLoading(true);
+      try {
+        const api = postApi(getToken);
+        const data = await api.list({ username, limit: 24 });
+        setPosts(data.posts);
+      } catch (err) {
+        setError(err instanceof ApiRequestError ? err.message : "Failed to load profile");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfileData();
+  }, [username, getToken]);
+
+  const handleShareProfile = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast.success("Profile link copied!");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-zinc-800" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-center px-4">
+        <ImageOff className="w-12 h-12 text-zinc-700" />
+        <h2 className="text-xl font-bold text-white">Profile not found</h2>
+        <p className="text-sm text-zinc-500 max-w-xs">The creator @{username} doesn&apos;t exist or is currently unavailable.</p>
+        <Link href="/" className="text-indigo-400 hover:underline text-sm font-medium">Explore Gallery</Link>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen px-4 py-24">
-      {/* Profile header */}
-      <div className="max-w-4xl mx-auto">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mb-12">
-          {/* Avatar placeholder */}
-          <div className="w-20 h-20 rounded-full bg-zinc-800 border-2 border-zinc-700 flex items-center justify-center flex-shrink-0">
-            <User className="w-9 h-9 text-zinc-500" />
+    <div className="min-h-screen pt-32 pb-20 px-4 md:px-8">
+      <div className="max-w-6xl mx-auto">
+        {/* Profile Header */}
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          className="flex flex-col md:flex-row items-center md:items-end gap-6 mb-16 border-b border-zinc-800/50 pb-12"
+        >
+          {/* Avatar */}
+          <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2.5rem] overflow-hidden border-2 border-zinc-800 relative bg-zinc-900 shadow-2xl">
+            <Image
+              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`}
+              alt={username}
+              fill
+              className="object-cover"
+            />
           </div>
 
-          {/* Identity */}
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold text-white tracking-tight">
+          {/* Info */}
+          <div className="flex-1 text-center md:text-left">
+            <h1 className="text-3xl md:text-4xl font-black text-white tracking-tighter mb-2">
               @{username}
             </h1>
-            <p className="text-sm text-zinc-400 mt-1">
-              AI artist on REX
-            </p>
-
-            {/* Social stats placeholder */}
-            <div className="flex gap-6 mt-4">
-              <Stat label="Posts" value="—" />
-              <Stat label="Followers" value="—" />
-              <Stat label="Following" value="—" />
+            <div className="flex flex-wrap justify-center md:justify-start gap-4 text-zinc-500 text-xs font-bold uppercase tracking-widest">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                <span>AI Creator</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Grid3X3 className="w-3.5 h-3.5" />
+                <span>{posts.length} Posts</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Joined May 2024</span>
+              </div>
             </div>
           </div>
 
-          {/* Follow button placeholder */}
-          <button
-            disabled
-            className="px-5 py-2 rounded-full border border-zinc-600 text-zinc-400 text-sm cursor-not-allowed opacity-60"
-            title="Follow feature coming soon"
-          >
-            Follow
-          </button>
-        </div>
+          {/* Actions */}
+          <div className="flex gap-3">
+            <button
+              onClick={handleShareProfile}
+              className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 transition"
+            >
+              <Share2 className="w-5 h-5" />
+            </button>
+            <button className="px-8 py-3 rounded-2xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 transition shadow-lg shadow-indigo-500/20 active:scale-95">
+              Follow
+            </button>
+          </div>
+        </motion.div>
 
-        {/* Posts gallery — Phase 2 */}
-        <div className="border-t border-zinc-800 pt-10">
-          <h2 className="text-sm font-medium text-zinc-500 uppercase tracking-widest mb-6">
-            Posts
-          </h2>
-          <EmptyGallery username={username} />
+        {/* Gallery Section */}
+        <div className="space-y-8">
+          <div className="flex items-center gap-3 mb-8">
+            <Grid3X3 className="w-5 h-5 text-indigo-400" />
+            <h2 className="text-xl font-bold text-white tracking-tight">Public Gallery</h2>
+          </div>
+
+          {posts.length === 0 ? (
+            <div className="py-24 text-center bg-zinc-900/20 border border-dashed border-zinc-800 rounded-3xl">
+              <ImageOff className="w-10 h-10 text-zinc-800 mx-auto mb-4" />
+              <p className="text-sm font-medium text-zinc-600">This creator hasn&apos;t published any posts yet.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+              {posts.map((post, i) => (
+                <motion.div
+                  key={post.id}
+                  custom={i}
+                  variants={fadeUp}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                >
+                  <Link href={`/posts/${post.id}`} className="block group">
+                    <div className="relative aspect-square rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-900 transition-all duration-300 group-hover:scale-[1.02] group-hover:border-zinc-600 shadow-lg">
+                      <Image
+                        src={post.image_url}
+                        alt={post.title || "AI Art"}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-4 flex flex-col justify-end">
+                        <p className="text-white font-bold text-sm truncate">{post.title || "Untitled"}</p>
+                        <p className="text-zinc-400 text-[10px] uppercase font-bold tracking-widest mt-1">View Post</p>
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
-    </div>
-  );
-}
-
-// ── Sub-components ─────────────────────────────────────────────────────────────
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col">
-      <span className="text-lg font-bold text-white">{value}</span>
-      <span className="text-xs text-zinc-500">{label}</span>
-    </div>
-  );
-}
-
-function EmptyGallery({ username }: { username: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 gap-4 text-zinc-600">
-      <ImageOff className="w-10 h-10" />
-      <p className="text-sm text-center">
-        @{username} hasn&apos;t published any posts yet.
-      </p>
-      <p className="text-xs text-zinc-700 text-center max-w-xs">
-        When they publish AI-generated images, they&apos;ll appear here.
-      </p>
     </div>
   );
 }
