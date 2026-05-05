@@ -1,11 +1,16 @@
+import { Metadata } from "next";
+import AppShell from "@/components/shared/AppShell";
 import UserProfilePage from "@/components/pages/profile";
 
-const Profile = () => {
-  return (
-    <div className="min-h-screen mt-10">
-      <UserProfilePage />
-    </div>
-  );
+export const metadata: Metadata = {
+  title: "My Account — REX",
+  description: "Manage your REX account, credits, and subscription plan.",
 };
 
-export default Profile;
+export default function ProfileRoute() {
+  return (
+    <AppShell>
+      <UserProfilePage />
+    </AppShell>
+  );
+}

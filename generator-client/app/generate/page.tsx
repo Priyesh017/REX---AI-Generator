@@ -1,54 +1,27 @@
 "use client";
 
-import React from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import ImageGeneratorPage from "@/components/pages/image-generator";
-import PromptHistoryTablePage from "@/components/pages/prompt-history";
-import { useAuth } from "@clerk/nextjs";
-import { motion, Variants } from "framer-motion";
+// app/generate/page.tsx
+// Legacy /generate route — now an alias for /studio.
+// Redirects immediately to preserve all existing inbound links and bookmarks.
 
-const fadeUpVariants: Variants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: (i: number = 0) => ({
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 1,
-      delay: 0.5 + i * 0.2,
-      ease: [0.25, 0.4, 0.25, 1],
-    },
-  }),
-};
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Sparkles } from "lucide-react";
 
-const Generate = () => {
-  const { isSignedIn } = useAuth();
+export default function GenerateRedirect() {
+  const router = useRouter();
 
+  useEffect(() => {
+    router.replace("/studio");
+  }, [router]);
+
+  // Brief loading state during redirect
   return (
-    <motion.div
-      custom={1}
-      variants={fadeUpVariants}
-      initial="hidden"
-      animate="visible"
-      className="relative z-10 min-h-screen flex flex-col gap-6 justify-center items-center mx-auto px-4 md:px-6 py-24 md:py-32 text-muted"
-    >
-      <Tabs defaultValue="generator" className="w-full">
-        {isSignedIn && (
-          <TabsList className="mx-auto">
-            <TabsTrigger value="generator">Image Generator</TabsTrigger>
-            <TabsTrigger value="history">Prompt History</TabsTrigger>
-          </TabsList>
-        )}
-        <TabsContent value="generator">
-          <ImageGeneratorPage />
-        </TabsContent>
-        {isSignedIn && (
-          <TabsContent value="history">
-            <PromptHistoryTablePage />
-          </TabsContent>
-        )}
-      </Tabs>
-    </motion.div>
+    <div className="min-h-screen bg-[#030303] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4 text-zinc-500">
+        <Sparkles className="w-8 h-8 animate-pulse text-indigo-400" />
+        <p className="text-sm">Redirecting to Studio…</p>
+      </div>
+    </div>
   );
-};
-
-export default Generate;
+}

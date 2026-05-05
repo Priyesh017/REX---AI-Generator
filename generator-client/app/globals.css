@@ -161,6 +161,15 @@
     );
     background-size: 200% 100%;
   }
+
+  /* Used by admin page modals */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 html,

@@ -1,9 +1,5 @@
-// app/u/[username]/page.tsx
-// Public creator profile page.
-// This is a SEPARATE concept from /profile (which is the authenticated account/settings page).
-// Accessible to guests — SSR for SEO.
-
 import { Metadata } from "next";
+import AppShell from "@/components/shared/AppShell";
 import PublicProfilePage from "@/components/profile/PublicProfilePage";
 
 interface Props {
@@ -24,5 +20,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function UserProfileRoute({ params }: Props) {
   const { username } = await params;
-  return <PublicProfilePage username={username} />;
+  return (
+    <AppShell>
+      <PublicProfilePage username={username} />
+    </AppShell>
+  );
 }

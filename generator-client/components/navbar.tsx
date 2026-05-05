@@ -1,52 +1,51 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { SignInButton, SignedOut, useAuth } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import type { Variants } from "framer-motion";
-import { Loader2 } from "lucide-react";
+import { Loader2, Zap } from "lucide-react";
 import { getMenuItems } from "@/data";
 import type { MenuItem } from "@/type";
+import { creditsApi } from "@/lib/api/credits";
 
 const Navbar = () => {
   const { isSignedIn, getToken } = useAuth();
+  const pathname = usePathname();
   const [credits, setCredits] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
-  
-  // Fix hydration errors by ensuring we only render dynamic auth content on the client
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Fetch credits whenever the user signs in
+  // Fetch credits whenever the user signs in using the new API endpoint
   useEffect(() => {
-    if (!mounted) return;
-    
+    if (!mounted || !isSignedIn) {
+      setCredits(null);
+      return;
+    }
+
+    let cancelled = false;
     const fetchCredits = async () => {
-      if (!isSignedIn) {
-        setCredits(null);
-        return;
-      }
       setLoading(true);
       try {
-        const token = await getToken();
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user-details`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (res.ok) {
-          setCredits(data.creditsLeft);
-        }
-      } catch (err) {
-        console.error("Failed to fetch credits:", err);
+        const api = creditsApi(getToken);
+        const creditsLeft = await api.getCredits();
+        if (!cancelled) setCredits(creditsLeft);
+      } catch {
+        // Non-critical — silently fail, don't spam console on 401
+        if (!cancelled) setCredits(null);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchCredits();
+    return () => { cancelled = true; };
   }, [isSignedIn, getToken, mounted]);
 
   const menuItems = getMenuItems(isSignedIn !== undefined ? isSignedIn : null);
@@ -61,70 +60,95 @@ const Navbar = () => {
       animate="visible"
     >
       <motion.div
-        className={cn(
-          "absolute -inset-2 rounded-3xl z-0 pointer-events-none"
-        )}
+        className={cn("absolute -inset-2 rounded-3xl z-0 pointer-events-none")}
         variants={navGlowVariants}
       />
 
       <div className="flex items-center justify-between relative z-10">
-        <div className="flex items-center gap-2">
-          <div className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white/90 to-rose-300 text-2xl font-bold px-2 ml-4 cursor-default">
+        {/* Logo */}
+        <a href="/" className="flex items-center gap-2">
+          <div className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white/90 to-rose-300 text-2xl font-bold px-2 ml-4 cursor-pointer select-none">
             REX
           </div>
-        </div>
+        </a>
 
-        <ul className="flex items-center gap-2">
-          {menuItems.map((item, idx) => (
-            <motion.li key={item.href || idx} className="relative">
-              <motion.div
-                className="block rounded-xl group relative"
-                style={{ perspective: "600px" }}
-                whileHover="hover"
-                initial="initial"
-              >
+        {/* Nav links */}
+        <ul className="flex items-center gap-1">
+          {menuItems.map((item) => {
+            const isActive =
+              item.href !== "#" &&
+              (item.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(item.href));
+            return (
+              <motion.li key={`${item.label}-${item.href}`} className="relative">
                 <motion.div
-                  className="absolute inset-0 z-0 pointer-events-none rounded-xl"
-                  variants={glowVariants}
-                  style={{ 
-                    background: item.gradient || "transparent", 
-                    opacity: 0 
-                  }}
-                />
+                  className="block rounded-xl group relative"
+                  style={{ perspective: "600px" }}
+                  whileHover="hover"
+                  initial="initial"
+                >
+                  <motion.div
+                    className="absolute inset-0 z-0 pointer-events-none rounded-xl"
+                    variants={glowVariants}
+                    style={{
+                      background: item.gradient || "transparent",
+                      opacity: isActive ? 0.5 : 0,
+                    }}
+                  />
 
-                {item.label === "Login" ? (
-                  <SignedOut>
-                    <SignInButton mode="modal">
-                      <div className="cursor-pointer">
-                        <NavLink item={item} front />
-                        <NavLink item={item} back />
-                      </div>
-                    </SignInButton>
-                  </SignedOut>
-                ) : (
-                  <>
-                    <NavLink item={item} front />
-                    <NavLink item={item} back />
-                  </>
-                )}
-              </motion.div>
-            </motion.li>
-          ))}
+                  {item.label === "Login" ? (
+                    <SignedOut>
+                      <SignInButton mode="modal">
+                        <div className="cursor-pointer">
+                          <NavLink item={item} front isActive={isActive} />
+                          <NavLink item={item} back isActive={isActive} />
+                        </div>
+                      </SignInButton>
+                    </SignedOut>
+                  ) : (
+                    <>
+                      <NavLink item={item} front isActive={isActive} />
+                      <NavLink item={item} back isActive={isActive} />
+                    </>
+                  )}
+                </motion.div>
+              </motion.li>
+            );
+          })}
         </ul>
-        
-        {/* credits display */}
+
+        {/* Credits pill */}
         {mounted && isSignedIn && (
-            <div className="flex items-center gap-1.5 bg-zinc-800/50 px-3 py-1 rounded-full border border-white/5 mr-4 shadow-inner group">
-              {loading ? (
-                <Loader2 className="w-3 h-3 animate-spin text-indigo-400" />
-              ) : (
-                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] group-hover:animate-pulse" />
+          <a
+            href="/buy"
+            className="flex items-center gap-1.5 bg-zinc-800/50 px-3 py-1.5 rounded-full border border-white/5 mr-4 shadow-inner group hover:border-indigo-500/30 transition-all"
+            title="Credits remaining — click to buy more"
+          >
+            {loading ? (
+              <Loader2 className="w-3 h-3 animate-spin text-indigo-400" />
+            ) : (
+              <Zap
+                className={cn(
+                  "w-3 h-3 transition-colors",
+                  credits !== null && credits <= 2
+                    ? "text-orange-400"
+                    : "text-indigo-400"
+                )}
+              />
+            )}
+            <span
+              className={cn(
+                "text-[11px] font-semibold tracking-wider uppercase transition-colors",
+                credits !== null && credits <= 2
+                  ? "text-orange-300"
+                  : "text-zinc-300"
               )}
-              <span className="text-[11px] font-medium tracking-wider text-zinc-300 uppercase">
-                {credits !== null ? `${credits}` : "0"}
-              </span>
-            </div>
-          )}
+            >
+              {credits !== null ? credits : "—"}
+            </span>
+          </a>
+        )}
       </div>
     </motion.nav>
   );
@@ -136,17 +160,20 @@ interface NavLinkProps {
   item: MenuItem;
   front?: boolean;
   back?: boolean;
+  isActive?: boolean;
 }
 
 const NavLink: React.FC<NavLinkProps> = ({
   item,
   front = false,
   back = false,
+  isActive = false,
 }) => (
   <motion.a
     href={item.href}
     className={cn(
-      "flex items-center gap-2 px-4 py-2 z-50 bg-transparent text-muted-foreground transition-colors rounded-xl",
+      "flex items-center gap-2 px-4 py-2 z-50 bg-transparent transition-colors rounded-xl",
+      isActive ? "text-white" : "text-muted-foreground",
       {
         "relative inset-auto": front,
         "absolute inset-0": back,
@@ -162,13 +189,14 @@ const NavLink: React.FC<NavLinkProps> = ({
   >
     <span
       className={cn(
-        "transition-colors duration-300 text-muted-foreground",
+        "transition-colors duration-300",
+        isActive ? item.iconColor : "text-muted-foreground",
         getHoverTextClass(item.iconColor)
       )}
     >
       {item.icon}
     </span>
-    <span className="hidden md:block group-hover:text-white transition-colors">
+    <span className={cn("hidden md:block transition-colors", isActive ? "text-white" : "group-hover:text-white")}>
       {item.label}
     </span>
   </motion.a>
