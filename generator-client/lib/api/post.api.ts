@@ -2,13 +2,13 @@ import { createApiClient } from "./client";
 
 export interface Post {
   id: string;
-  creator_id: string;
+  author_profile_id: string;
   image_url: string;
   prompt: string;
   title: string | null;
   caption: string | null;
   created_at: string;
-  creator?: {
+  author?: {
     username: string;
     display_name: string;
     avatar_url: string;
@@ -32,13 +32,17 @@ export const postApi = (getToken: () => Promise<string | null>) => {
 
   return {
     /** List public posts for the feed or a specific user */
-    list: async (params: { username?: string; page?: number; limit?: number }) => {
+    list: async (params: { username?: string; page?: number; limit?: number }): Promise<ListPostsResponse> => {
       const searchParams = new URLSearchParams();
       if (params.username) searchParams.set("username", params.username);
       if (params.page) searchParams.set("page", params.page.toString());
       if (params.limit) searchParams.set("limit", params.limit.toString());
 
-      return client.get<ListPostsResponse>(`/posts?${searchParams.toString()}`);
+      return client.get<{ data: Post[]; meta: ListPostsResponse["meta"] }>(`/posts?${searchParams.toString()}`)
+        .then(r => ({
+          posts: r.data,
+          meta: r.meta
+        }));
     },
 
     /** Get a single post by ID */

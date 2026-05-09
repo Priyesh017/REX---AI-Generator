@@ -119,16 +119,15 @@ export default function PostDetailPage({ postId }: { postId: string }) {
                 {post.title || "Untitled Creation"}
               </h1>
 
-              {/* Creator Card */}
               <Link
-                href={`/u/${post.creator?.username}`}
+                href={`/u/${post.author?.username}`}
                 className="flex items-center gap-3 bg-zinc-900/50 border border-zinc-800 p-3 rounded-2xl hover:border-zinc-700 transition group"
               >
                 <div className="w-10 h-10 rounded-xl overflow-hidden relative border border-zinc-700">
                   <Image
                     src={
-                      post.creator?.avatar_url ||
-                      `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.creator?.username}`
+                      post.author?.avatar_url ||
+                      `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.author?.username}`
                     }
                     alt="Creator"
                     fill
@@ -140,7 +139,7 @@ export default function PostDetailPage({ postId }: { postId: string }) {
                     Creator
                   </p>
                   <p className="text-sm text-white font-bold group-hover:text-indigo-400 transition">
-                    @{post.creator?.username}
+                    @{post.author?.username}
                   </p>
                 </div>
                 <ExternalLink className="w-4 h-4 text-zinc-600 group-hover:text-white transition mr-2" />

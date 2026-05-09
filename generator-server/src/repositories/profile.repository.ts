@@ -1,56 +1,56 @@
 // src/repositories/profile.repository.ts
 // Owns ALL database access for the profiles / users domain.
 // Services call these functions — nothing else touches the DB for profile data.
-//
-// NOTE: The current DB table is named "users" with clerk_id as the identifier.
-// This repository abstracts that detail. Future migration will rename to "profiles"
-// and add an internal UUID, but all callers will be unaffected.
 
 import { supabase } from "../config/supabase";
 import { clerkClient } from "../config/clerk";
 
 export interface UserRecord {
+  id: string; // Internal UUID
   clerk_id: string;
-  name: string | null;
-  email: string | null;
-  phone_number: string | null;
-  user_image_url: string | null;
+  username: string | null;
+  display_name: string | null;
+  bio: string | null;
+  avatar_url: string | null;
   credits: number;
   current_plan: string;
   subscription_status: string | null;
   created_at: string;
 }
 
-export interface CreateUserPayload {
+export interface CreateProfilePayload {
   clerkId: string;
-  name: string;
-  email: string;
-  phoneNumber?: string;
-  imageUrl?: string;
+  username: string;
+  displayName: string;
+  email?: string;
+  avatarUrl?: string;
 }
 
-export interface UpdateUserPayload {
+export interface UpdateProfilePayload {
   credits?: number;
   current_plan?: string;
+  username?: string;
+  display_name?: string;
+  bio?: string;
+  avatar_url?: string;
 }
 
 /**
- * Find a user by their Clerk ID.
+ * Find a profile by their Clerk ID.
  * Returns null if not found (does not throw).
  */
 export async function findByClerkId(
   clerkId: string
 ): Promise<UserRecord | null> {
   const { data, error } = await supabase
-    .from("users")
+    .from("profiles")
     .select(
-      "clerk_id, name, email, phone_number, user_image_url, credits, current_plan, subscription_status, created_at"
+      "id, clerk_id, username, display_name, bio, avatar_url, credits, current_plan, subscription_status, created_at"
     )
     .eq("clerk_id", clerkId)
     .single();
 
   if (error) {
-    // PGRST116 = row not found — not an error for our purposes
     if (error.code === "PGRST116") return null;
     throw new Error(`DB error in findByClerkId: ${error.message}`);
   }
@@ -59,50 +59,45 @@ export async function findByClerkId(
 }
 
 /**
- * Create a new user record with default free-tier values.
- * Idempotent: if user already exists, returns the existing record.
+ * Create a new profile record with default values.
+ * Note: Caller should ensure profile doesn't exist, or handle unique constraint error.
  */
-export async function findOrCreate(
-  payload: CreateUserPayload
+export async function create(
+  payload: CreateProfilePayload
 ): Promise<UserRecord> {
-  // Try to find first
-  const existing = await findByClerkId(payload.clerkId);
-  if (existing) return existing;
-
   const { data, error } = await supabase
-    .from("users")
+    .from("profiles")
     .insert([
       {
         clerk_id: payload.clerkId,
-        name: payload.name,
-        email: payload.email,
-        phone_number: payload.phoneNumber ?? "Not provided",
-        user_image_url: payload.imageUrl ?? null,
+        username: payload.username,
+        display_name: payload.displayName,
+        avatar_url: payload.avatarUrl ?? null,
         credits: 5,
         current_plan: "free",
       },
     ])
     .select(
-      "clerk_id, name, email, phone_number, user_image_url, credits, current_plan, subscription_status, created_at"
+      "id, clerk_id, username, display_name, bio, avatar_url, credits, current_plan, subscription_status, created_at"
     )
     .single();
 
   if (error) {
-    throw new Error(`DB error in findOrCreate: ${error.message}`);
+    throw new Error(`DB error in create profile: ${error.message}`);
   }
 
   return data as UserRecord;
 }
 
 /**
- * Update credits and/or plan for a user.
+ * Update credits and/or profile data.
  */
 export async function updateByClerkId(
   clerkId: string,
-  payload: UpdateUserPayload
+  payload: UpdateProfilePayload
 ): Promise<void> {
   const { error } = await supabase
-    .from("users")
+    .from("profiles")
     .update(payload)
     .eq("clerk_id", clerkId);
 
@@ -112,16 +107,14 @@ export async function updateByClerkId(
 }
 
 /**
- * Safely decrement credits by 1 only if credits > 0.
- * Returns the new credit value, or null if deduction was not possible.
- * Uses a conditional update to prevent race conditions.
+ * Safely decrement credits by 1.
  */
 export async function decrementCredit(
   clerkId: string,
   currentCredits: number
 ): Promise<boolean> {
   const { error, count } = await supabase
-    .from("users")
+    .from("profiles")
     .update({ credits: currentCredits - 1 })
     .eq("clerk_id", clerkId)
     .gt("credits", 0);
@@ -134,8 +127,7 @@ export async function decrementCredit(
 }
 
 /**
- * Resolve Clerk user details and ensure a local user record exists.
- * Used by requireAuth middleware after token verification.
+ * Resolve Clerk user details and ensure a local profile record exists.
  */
 export async function resolveOrProvisionUser(
   clerkId: string
@@ -143,21 +135,21 @@ export async function resolveOrProvisionUser(
   const existing = await findByClerkId(clerkId);
   if (existing) return existing;
 
-  // First time: fetch Clerk details and create local record
   const clerkUser = await clerkClient.users.getUser(clerkId);
-  const fullName =
+  
+  const username = 
+    clerkUser.username || 
+    clerkUser.emailAddresses[0]?.emailAddress.split('@')[0] || 
+    `user_${Math.random().toString(36).substring(7)}`;
+    
+  const displayName =
     `${clerkUser.firstName ?? ""} ${clerkUser.lastName ?? ""}`.trim() ||
-    "Unknown";
-  const email = clerkUser.emailAddresses[0]?.emailAddress ?? "";
-  const phone =
-    clerkUser.phoneNumbers[0]?.phoneNumber ?? "Not provided";
-  const imageUrl = clerkUser.imageUrl ?? "";
+    username;
 
-  return findOrCreate({
+  return create({
     clerkId,
-    name: fullName,
-    email,
-    phoneNumber: phone,
-    imageUrl,
+    username,
+    displayName,
+    avatarUrl: clerkUser.imageUrl,
   });
 }

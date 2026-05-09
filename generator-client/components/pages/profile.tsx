@@ -13,8 +13,8 @@ import {
   Zap,
   Crown,
   Calendar,
-  Phone,
-  Mail,
+  User,
+  Sparkles,
   Wand2,
   ShoppingCart,
   ExternalLink,
@@ -136,7 +136,7 @@ export default function UserProfilePage() {
                       {profile?.displayName ?? user?.fullName ?? "User"}
                     </h2>
                     <p className="text-xs text-zinc-500 mt-0.5">
-                      {profile?.email ?? user?.primaryEmailAddress?.emailAddress}
+                      @{profile?.username ?? "user"}
                     </p>
                   </div>
                 </div>
@@ -145,14 +145,14 @@ export default function UserProfilePage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <InfoRow
-                  icon={<Mail className="w-3.5 h-3.5" />}
-                  label="Email"
-                  value={profile?.email ?? "—"}
+                  icon={<User className="w-3.5 h-3.5" />}
+                  label="Username"
+                  value={`@${profile?.username ?? "user"}`}
                 />
                 <InfoRow
-                  icon={<Phone className="w-3.5 h-3.5" />}
-                  label="Phone"
-                  value={profile?.phoneNumber ?? "Not provided"}
+                  icon={<Sparkles className="w-3.5 h-3.5" />}
+                  label="Bio"
+                  value={profile?.bio ?? "No bio provided"}
                 />
                 <InfoRow
                   icon={<Calendar className="w-3.5 h-3.5" />}
@@ -167,6 +167,16 @@ export default function UserProfilePage() {
                       : "—"
                   }
                 />
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-zinc-800/80">
+                <Link
+                  href={`/u/${profile?.username}`}
+                  className="flex items-center justify-center gap-2 w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-sm text-white rounded-xl transition"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  View Public Profile
+                </Link>
               </div>
             </motion.div>
 

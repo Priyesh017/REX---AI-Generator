@@ -29,24 +29,24 @@ export function studioApi(getToken: () => Promise<string | null>) {
   const client = createApiClient(getToken);
 
   return {
-    /** POST /api/studio/generate — generate image from prompt */
+    /** POST /studio/generate — generate image from prompt */
     generate: (prompt: string) =>
       client
-        .post<{ data: GenerateResult }>("/api/studio/generate", { prompt })
+        .post<{ data: GenerateResult }>("/studio/generate", { prompt })
         .then((r) => r.data),
 
-    /** GET /api/studio/drafts — list current user's draft assets */
+    /** GET /studio/drafts — list current user's draft assets */
     listDrafts: (page = 1, limit = 12) =>
       client
         .get<{ data: DraftAsset[]; meta: DraftListMeta }>(
-          `/api/studio/drafts?page=${page}&limit=${limit}`
+          `/studio/drafts?page=${page}&limit=${limit}`
         )
         .then((r) => ({ assets: r.data, meta: r.meta })),
 
-    /** DELETE /api/studio/drafts/:id */
+    /** DELETE /studio/drafts/:id */
     deleteDraft: (id: string) =>
       client
-        .delete<{ data: { deleted: boolean } }>(`/api/studio/drafts/${id}`)
+        .delete<{ data: { deleted: boolean } }>(`/studio/drafts/${id}`)
         .then((r) => r.data),
   };
 }

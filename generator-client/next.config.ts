@@ -18,6 +18,16 @@ const nextConfig: NextConfig = {
         hostname: process.env.NEXT_PUBLIC_SUPABASE_URL!,
         pathname: "/storage/v1/object/public/generated-images/**",
       },
+      {
+        protocol: "https",
+        hostname: "api.dicebear.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "img.clerk.com",
+        pathname: "/**",
+      },
     ],
   },
 };

@@ -12,7 +12,7 @@ export function errorHandler(
   req: Request,
   res: Response,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _next: NextFunction
+  _next: NextFunction,
 ): void {
   // 1. Zod validation errors
   if (err instanceof ZodError) {
@@ -21,7 +21,7 @@ export function errorHandler(
       "Validation failed",
       422,
       "VALIDATION_ERROR",
-      err.flatten().fieldErrors
+      err.flatten().fieldErrors,
     );
     return;
   }
@@ -39,3 +39,5 @@ export function errorHandler(
   console.error("❌ Unhandled error:", err);
   sendError(res, message, 500, "INTERNAL_ERROR");
 }
+
+export { AppError };

@@ -1,27 +1,26 @@
 // src/repositories/draft.repository.ts
-// Owns ALL database access for draft assets (the "images" table today).
-// These are PRIVATE studio assets — separate from published posts.
-//
-// Terminology shift: "history" → "drafts/studio assets"
-// The table is still "images" in DB — this repository hides that.
-// Future: rename table to "draft_assets" or "generated_images" in a migration.
+// Owns ALL database access for draft assets (the "generated_assets" table).
 
 import { supabase } from "../config/supabase";
 
 export interface DraftAsset {
   id: string;
-  user_id: string; // clerk_id — current schema; future: profile UUID FK
+  owner_profile_id: string;
   title: string | null;
   prompt: string;
   image_url: string;
+  model_name: string | null;
+  aspect_ratio: string | null;
   created_at: string;
 }
 
 export interface CreateDraftPayload {
-  clerkId: string;
+  profileId: string; // Internal UUID
   title: string | null;
   prompt: string;
   imageUrl: string;
+  modelName?: string;
+  aspectRatio?: string;
 }
 
 export interface DraftListResult {
@@ -35,22 +34,37 @@ export interface DraftListResult {
 }
 
 /**
- * List draft assets for a user with OFFSET pagination.
- * TODO (migration): Replace with keyset cursor pagination when moving to social feed.
+ * List draft assets for a user by their Clerk ID.
+ * Resolves the internal profile ID first for maximum reliability.
  */
 export async function listByClerkId(
   clerkId: string,
   page: number,
   limit: number
 ): Promise<DraftListResult> {
+  // 1. Resolve internal profile ID first
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("clerk_id", clerkId)
+    .single();
+
+  if (profileError || !profile) {
+    return {
+      assets: [],
+      pagination: { page, limit, total: 0, hasNext: false },
+    };
+  }
+
   const offset = (page - 1) * limit;
 
+  // 2. Query assets by owner_profile_id directly
   const { data, error, count } = await supabase
-    .from("images")
-    .select("id, user_id, title, prompt, image_url, created_at", {
+    .from("generated_assets")
+    .select("*", {
       count: "exact",
     })
-    .eq("user_id", clerkId)
+    .eq("owner_profile_id", profile.id)
     .range(offset, offset + limit - 1)
     .order("created_at", { ascending: false });
 
@@ -73,12 +87,11 @@ export async function listByClerkId(
 
 /**
  * Find a single draft asset by ID.
- * Returns null if not found.
  */
 export async function findById(id: string): Promise<DraftAsset | null> {
   const { data, error } = await supabase
-    .from("images")
-    .select("id, user_id, title, prompt, image_url, created_at")
+    .from("generated_assets")
+    .select("*")
     .eq("id", id)
     .single();
 
@@ -95,16 +108,19 @@ export async function findById(id: string): Promise<DraftAsset | null> {
  */
 export async function create(payload: CreateDraftPayload): Promise<DraftAsset> {
   const { data, error } = await supabase
-    .from("images")
+    .from("generated_assets")
     .insert([
       {
-        user_id: payload.clerkId,
+        owner_profile_id: payload.profileId,
         title: payload.title,
         prompt: payload.prompt,
         image_url: payload.imageUrl,
+        model_name: payload.modelName || "stable-diffusion-xl",
+        aspect_ratio: payload.aspectRatio || "1:1",
+        generation_status: "completed",
       },
     ])
-    .select("id, user_id, title, prompt, image_url, created_at")
+    .select("*")
     .single();
 
   if (error) {
@@ -115,21 +131,30 @@ export async function create(payload: CreateDraftPayload): Promise<DraftAsset> {
 }
 
 /**
- * Delete a draft asset — only if it belongs to the specified user.
- * Returns true if deleted, false if not found / not owned.
+ * Delete a draft asset.
  */
 export async function deleteOwned(
   id: string,
   clerkId: string
 ): Promise<boolean> {
-  const { error, count } = await supabase
-    .from("images")
+  // First verify ownership via join
+  const { data: asset, error: fetchError } = await supabase
+    .from("generated_assets")
+    .select("id, profile:profiles!inner(clerk_id)")
+    .eq("id", id)
+    .eq("profile.clerk_id", clerkId)
+    .single();
+
+  if (fetchError || !asset) return false;
+
+  const { error } = await supabase
+    .from("generated_assets")
     .delete()
-    .match({ id, user_id: clerkId });
+    .eq("id", id);
 
   if (error) {
     throw new Error(`DB error in deleteOwned: ${error.message}`);
   }
 
-  return (count ?? 0) > 0;
+  return true;
 }

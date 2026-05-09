@@ -4,10 +4,11 @@
 import { createApiClient } from "./client";
 
 export interface ProfileData {
+  id: string;
   clerkId: string;
+  username: string;
   displayName: string;
-  email: string;
-  phoneNumber: string;
+  bio: string | null;
   avatarUrl: string | null;
   plan: string;
   subscriptionStatus: string | null;
@@ -19,8 +20,8 @@ export function profileApi(getToken: () => Promise<string | null>) {
   const client = createApiClient(getToken);
 
   return {
-    /** GET /api/profile/me — current user's profile */
+    /** GET /profile/me — current user's profile */
     getMyProfile: () =>
-      client.get<{ data: ProfileData }>("/api/profile/me").then((r) => r.data),
+      client.get<{ data: ProfileData }>("/profile/me").then((r) => r.data),
   };
 }

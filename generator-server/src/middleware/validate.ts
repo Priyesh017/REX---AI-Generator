@@ -29,7 +29,13 @@ export function validate(schema: ZodSchema, target: Target = "body") {
     }
 
     // Replace with parsed/coerced data
-    (req as unknown as Record<string, unknown>)[target] = result.data;
+    // We use Object.defineProperty because Express often defines req.query/req.params as getters.
+    Object.defineProperty(req, target, {
+      value: result.data,
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    });
     next();
   };
 }

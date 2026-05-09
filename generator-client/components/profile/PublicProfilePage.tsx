@@ -89,10 +89,11 @@ export default function PublicProfilePage({ username }: PublicProfilePageProps) 
           {/* Avatar */}
           <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2.5rem] overflow-hidden border-2 border-zinc-800 relative bg-zinc-900 shadow-2xl">
             <Image
-              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`}
+              src={posts[0]?.author?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`}
               alt={username}
               fill
               className="object-cover"
+              unoptimized
             />
           </div>
 

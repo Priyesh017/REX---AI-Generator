@@ -5,8 +5,8 @@ import { supabase } from "../config/supabase";
 export const getAdminStats = async (req: Request, res: Response) => {
   try {
     // 1. Total Counts
-    const { count: userCount } = await supabase.from("users").select("*", { count: "exact", head: true });
-    const { count: imageCount } = await supabase.from("images").select("*", { count: "exact", head: true });
+    const { count: userCount } = await supabase.from("profiles").select("*", { count: "exact", head: true });
+    const { count: imageCount } = await supabase.from("generated_assets").select("*", { count: "exact", head: true });
 
     // 2. Revenue Calculation
     const { data: paidOrders } = await supabase
@@ -43,13 +43,23 @@ export const getAdminStats = async (req: Request, res: Response) => {
 export const getAdminUsers = async (req: Request, res: Response) => {
   const { search } = req.query;
   try {
-    let query = supabase.from("users").select("*").order("created_at", { ascending: false });
+    let query = supabase.from("profiles").select("*").order("created_at", { ascending: false });
     
     if (search) {
-      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,clerk_id.eq.${search}`);
+      query = query.or(`display_name.ilike.%${search}%,username.ilike.%${search}%,clerk_id.eq.${search}`);
     }
 
-    const { data: users, error } = await query.limit(20);
+    const { data: profilesData, error } = await query.limit(20);
+    if (error) throw error;
+
+    const users = profilesData?.map(p => ({
+      clerk_id: p.clerk_id,
+      name: p.display_name || p.username || "Unknown",
+      email: "N/A", // Email removed in new schema
+      credits: p.credits,
+      current_plan: p.current_plan,
+      created_at: p.created_at
+    })) || [];
     if (error) throw error;
 
     res.json({ success: true, users });
@@ -65,18 +75,22 @@ export const getAdminTransactions = async (req: Request, res: Response) => {
       .from("orders")
       .select(`
         *,
-        users (name, email),
         plans (name)
       `)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
 
+    // Fetch profiles manually if no direct relation or to simplify for now
+    // Actually, orders probably links to clerk_id. Let's just fetch all profiles and map them.
+    const { data: profilesData } = await supabase.from("profiles").select("clerk_id, display_name");
+    const profileMap = new Map((profilesData || []).map(p => [p.clerk_id, p.display_name]));
+
     // Flatten the data for the frontend
     const flattened = transactions?.map((t: any) => ({
       ...t,
-      user_name: t.users?.name || "Unknown",
-      user_email: t.users?.email || "N/A",
+      user_name: profileMap.get(t.user_id) || "Unknown",
+      user_email: "N/A",
       plan_name: t.plans?.name || "N/A"
     }));
 
@@ -90,10 +104,10 @@ export const getAdminTransactions = async (req: Request, res: Response) => {
 export const getAdminImages = async (req: Request, res: Response) => {
   try {
     const { data: images, error } = await supabase
-      .from("images")
+      .from("generated_assets")
       .select(`
         *,
-        users (name)
+        profiles!inner(display_name)
       `)
       .order("created_at", { ascending: false });
 
@@ -101,7 +115,7 @@ export const getAdminImages = async (req: Request, res: Response) => {
 
     const flattened = images?.map((i: any) => ({
       ...i,
-      user_name: i.users?.name || "Unknown"
+      user_name: i.profiles?.display_name || "Unknown"
     }));
 
     res.json({ success: true, images: flattened });
@@ -117,7 +131,7 @@ export const updateUserDetails = async (req: Request, res: Response) => {
   const { userId, credits, plan } = req.body;
   try {
     const { error } = await supabase
-      .from("users")
+      .from("profiles")
       .update({ credits, current_plan: plan })
       .eq("clerk_id", userId);
 

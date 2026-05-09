@@ -13,6 +13,10 @@ const generateImageFromPrompt = async (prompt) => {
             parameters: {
                 negative_prompt: "low quality, blurry, extra limbs, watermark, text",
             },
+            //@ts-ignore - Some versions of the HF SDK support this to handle cold models
+            options: {
+                wait_for_model: true,
+            }
         });
         // Use duck-typing instead of instanceof
         if (!result || typeof result.arrayBuffer !== "function") {

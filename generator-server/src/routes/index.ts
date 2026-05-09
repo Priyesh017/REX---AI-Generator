@@ -19,6 +19,7 @@ import { apiLimiter } from "../middleware/limiter";
 // Domain routers
 import profileRouter from "./profile.routes";
 import studioRouter from "./studio.routes";
+import postRouter from "./post.routes";
 
 // Legacy controllers (preserved — do not break existing flows)
 import { getSubscriptionPlans } from "../controllers/getPlans";
@@ -47,6 +48,7 @@ router.use(apiLimiter);
 // ── Domain routers (new canonical paths) ─────────────────────────────────────
 router.use("/profile", profileRouter);
 router.use("/studio", studioRouter);
+router.use("/posts", postRouter);
 
 // ── Billing (unchanged) ───────────────────────────────────────────────────────
 router.get("/plans", catchAsync(getSubscriptionPlans));

@@ -7,10 +7,11 @@ import * as profileRepo from "../repositories/profile.repository";
 import { NotFoundError } from "../lib/errors";
 
 export interface ProfileDTO {
+  id: string;
   clerkId: string;
+  username: string;
   displayName: string;
-  email: string;
-  phoneNumber: string;
+  bio: string | null;
   avatarUrl: string | null;
   plan: string;
   subscriptionStatus: string | null;
@@ -44,11 +45,12 @@ export async function getProfileOrThrow(clerkId: string): Promise<ProfileDTO> {
 
 function toDTO(user: profileRepo.UserRecord): ProfileDTO {
   return {
+    id: user.id,
     clerkId: user.clerk_id,
-    displayName: user.name ?? "Unknown",
-    email: user.email ?? "",
-    phoneNumber: user.phone_number ?? "Not provided",
-    avatarUrl: user.user_image_url,
+    username: user.username ?? "user",
+    displayName: user.display_name ?? "Unknown",
+    bio: user.bio,
+    avatarUrl: user.avatar_url,
     plan: user.current_plan ?? "free",
     subscriptionStatus: user.subscription_status,
     creditsLeft: user.credits ?? 0,

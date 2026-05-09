@@ -10,7 +10,7 @@ export function creditsApi(getToken: () => Promise<string | null>) {
   return {
     getCredits: () =>
       client
-        .get<{ data: ProfileData }>("/api/profile/me")
+        .get<{ data: ProfileData }>("/profile/me")
         .then((r) => r.data.creditsLeft),
   };
 }
