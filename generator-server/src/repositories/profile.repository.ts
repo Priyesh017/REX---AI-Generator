@@ -4,6 +4,7 @@
 
 import { supabase } from "../config/supabase";
 import { clerkClient } from "../config/clerk";
+import { logger } from "../utils/logger";
 
 export interface UserRecord {
   id: string; // Internal UUID
@@ -59,6 +60,29 @@ export async function findByClerkId(
 }
 
 /**
+ * Find a profile by their username.
+ * Returns null if not found (does not throw).
+ */
+export async function findByUsername(
+  username: string
+): Promise<UserRecord | null> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(
+      "id, clerk_id, username, display_name, bio, avatar_url, credits, current_plan, subscription_status, created_at"
+    )
+    .eq("username", username)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") return null;
+    throw new Error(`DB error in findByUsername: ${error.message}`);
+  }
+
+  return data as UserRecord;
+}
+
+/**
  * Create a new profile record with default values.
  * Note: Caller should ensure profile doesn't exist, or handle unique constraint error.
  */
@@ -107,23 +131,32 @@ export async function updateByClerkId(
 }
 
 /**
- * Safely decrement credits by 1.
+ * Safely reserve a generation credit atomically.
+ * Returns true if successful, false if insufficient credits.
  */
-export async function decrementCredit(
-  clerkId: string,
-  currentCredits: number
-): Promise<boolean> {
-  const { error, count } = await supabase
-    .from("profiles")
-    .update({ credits: currentCredits - 1 })
-    .eq("clerk_id", clerkId)
-    .gt("credits", 0);
+export async function reserveCredit(clerkId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("reserve_generation_credit", {
+    user_clerk_id: clerkId,
+  });
 
   if (error) {
-    throw new Error(`DB error in decrementCredit: ${error.message}`);
+    throw new Error(`DB error in reserveCredit: ${error.message}`);
   }
 
-  return (count ?? 0) > 0;
+  return data === true;
+}
+
+/**
+ * Refund a credit if generation fails.
+ */
+export async function refundCredit(clerkId: string): Promise<void> {
+  const { error } = await supabase.rpc("refund_generation_credit", {
+    user_clerk_id: clerkId,
+  });
+
+  if (error) {
+    logger.error({ error }, `Failed to refund credit for ${clerkId}:`);
+  }
 }
 
 /**

@@ -43,6 +43,7 @@ export default function GeneratorPanel() {
         prompt: "",
         title: null,
         image_url: cached,
+        generation_status: "completed",
         created_at: "",
       });
     }
@@ -63,32 +64,60 @@ export default function GeneratorPanel() {
     if (!trimmed || isLoading) return;
 
     setIsLoading(true);
-    // Clear previous result optimistically so shimmer shows
     setResult(null);
 
     try {
       const api = studioApi(getToken);
       const genResult = await api.generate(trimmed);
 
-      saveImageUrlToCookie(genResult.asset.image_url);
-      setResult(genResult.asset);
       setCreditsLeft(genResult.creditsRemaining);
 
-      toast.success(
-        `Image saved to drafts · ${genResult.creditsRemaining} credit${genResult.creditsRemaining !== 1 ? "s" : ""} left`,
-        { icon: "✨", duration: 4000 }
-      );
+      if (genResult.asset.generation_status === "completed") {
+        saveImageUrlToCookie(genResult.asset.image_url);
+        setResult(genResult.asset);
+        setIsLoading(false);
+        toast.success(`Image saved to drafts`, { icon: "✨" });
+      } else {
+        // Poll for completion
+        let attempts = 0;
+        const maxAttempts = 30; // 60 seconds (2s interval)
+        const intervalId = setInterval(async () => {
+          attempts++;
+          try {
+            const { asset } = await api.getDraft(genResult.asset.id);
+            if (asset.generation_status === "completed") {
+              clearInterval(intervalId);
+              saveImageUrlToCookie(asset.image_url);
+              setResult(asset);
+              setIsLoading(false);
+              toast.success(`Image generated and saved to drafts`, { icon: "✨" });
+            } else if (asset.generation_status === "failed") {
+              clearInterval(intervalId);
+              setIsLoading(false);
+              toast.error("Generation failed. Your credit has been refunded.");
+              setResult(null);
+            }
+          } catch (pollErr) {
+            console.error("Polling error:", pollErr);
+          }
+
+          if (attempts >= maxAttempts) {
+            clearInterval(intervalId);
+            setIsLoading(false);
+            toast.error("Generation timed out. Please check your drafts later.");
+            setResult(null);
+          }
+        }, 2000);
+      }
     } catch (err) {
       const msg =
         err instanceof ApiRequestError
           ? err.message
           : "Generation failed. Please try again.";
       toast.error(msg);
-      // Restore blank state so user can retry
       setResult(null);
-    } finally {
       setIsLoading(false);
-      // Refocus prompt for quick re-generation
+    } finally {
       promptRef.current?.focus();
     }
   };

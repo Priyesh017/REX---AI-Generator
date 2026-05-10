@@ -5,7 +5,7 @@
 
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth";
-import { generationLimiter } from "../middleware/limiter";
+import { generationLimiter, generationSpeedLimiter } from "../middleware/limiter";
 import { catchAsync } from "../utils/catchAsync";
 import { validate } from "../middleware/validate";
 import {
@@ -17,6 +17,7 @@ import {
   generate,
   listDrafts,
   deleteDraft,
+  getDraft,
 } from "../controllers/draft.controller";
 
 const router = Router();
@@ -29,6 +30,7 @@ router.post(
   "/generate",
   requireAuth,
   generationLimiter,
+  generationSpeedLimiter,
   validate(generateSchema, "body"),
   catchAsync(generate)
 );
@@ -42,6 +44,17 @@ router.get(
   requireAuth,
   validate(listDraftsQuerySchema, "query"),
   catchAsync(listDrafts)
+);
+
+/**
+ * GET /api/studio/drafts/:id
+ * Get a specific draft asset.
+ */
+router.get(
+  "/drafts/:id",
+  requireAuth,
+  validate(draftIdParamSchema, "params"),
+  catchAsync(getDraft)
 );
 
 /**

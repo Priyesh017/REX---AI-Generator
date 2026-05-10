@@ -41,13 +41,13 @@ const BuyCreditPage = ({ handleSubscription }: Props) => {
     const fetchPlans = async () => {
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/plans`);
-        const data = await res.json();
+        const json = await res.json();
 
-        if (!res.ok || !data.success) {
-          throw new Error(data.error || "Failed to fetch plans");
+        if (!res.ok) {
+          throw new Error(json.error || "Failed to fetch plans");
         }
 
-        setPlans(data.plans || []);
+        setPlans(json.data || []);
       } catch (err) {
         toast.error("Failed to load plans");
         console.error("Fetch plans error:", err);

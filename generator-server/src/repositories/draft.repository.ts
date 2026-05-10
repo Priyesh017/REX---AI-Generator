@@ -106,7 +106,7 @@ export async function findById(id: string): Promise<DraftAsset | null> {
 /**
  * Create a new draft asset record.
  */
-export async function create(payload: CreateDraftPayload): Promise<DraftAsset> {
+export async function create(payload: CreateDraftPayload, isPending: boolean = false): Promise<DraftAsset> {
   const { data, error } = await supabase
     .from("generated_assets")
     .insert([
@@ -117,7 +117,7 @@ export async function create(payload: CreateDraftPayload): Promise<DraftAsset> {
         image_url: payload.imageUrl,
         model_name: payload.modelName || "stable-diffusion-xl",
         aspect_ratio: payload.aspectRatio || "1:1",
-        generation_status: "completed",
+        generation_status: isPending ? "pending" : "completed",
       },
     ])
     .select("*")
@@ -128,6 +128,53 @@ export async function create(payload: CreateDraftPayload): Promise<DraftAsset> {
   }
 
   return data as DraftAsset;
+}
+
+/**
+ * Update the result of a pending generation.
+ */
+export async function updateGenerationResult(id: string, imageUrl: string): Promise<void> {
+  const { error } = await supabase
+    .from("generated_assets")
+    .update({ 
+      image_url: imageUrl,
+      generation_status: "completed"
+    })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(`DB error in updateGenerationResult: ${error.message}`);
+  }
+}
+
+/**
+ * Mark a generation as failed.
+ */
+export async function markFailed(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("generated_assets")
+    .update({ 
+      generation_status: "failed"
+    })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(`DB error in markFailed: ${error.message}`);
+  }
+}
+
+/**
+ * Update the title of a draft asset.
+ */
+export async function updateTitle(id: string, title: string): Promise<void> {
+  const { error } = await supabase
+    .from("generated_assets")
+    .update({ title })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(`DB error in updateTitle: ${error.message}`);
+  }
 }
 
 /**

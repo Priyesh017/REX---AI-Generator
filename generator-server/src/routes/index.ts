@@ -20,6 +20,7 @@ import { apiLimiter } from "../middleware/limiter";
 import profileRouter from "./profile.routes";
 import studioRouter from "./studio.routes";
 import postRouter from "./post.routes";
+import socialRouter from "./social.routes";
 
 // Legacy controllers (preserved — do not break existing flows)
 import { getSubscriptionPlans } from "../controllers/getPlans";
@@ -49,6 +50,7 @@ router.use(apiLimiter);
 router.use("/profile", profileRouter);
 router.use("/studio", studioRouter);
 router.use("/posts", postRouter);
+router.use("/social", socialRouter);
 
 // ── Billing (unchanged) ───────────────────────────────────────────────────────
 router.get("/plans", catchAsync(getSubscriptionPlans));

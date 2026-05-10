@@ -6,6 +6,7 @@ import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
 import { AppError } from "../lib/errors";
 import { sendError } from "../lib/response";
+import { logger } from "../utils/logger";
 
 export function errorHandler(
   err: unknown,
@@ -33,11 +34,10 @@ export function errorHandler(
   }
 
   // 3. Unknown errors — log and return generic 500
-  const message =
-    err instanceof Error ? err.message : "An unexpected error occurred";
-
-  console.error("❌ Unhandled error:", err);
-  sendError(res, message, 500, "INTERNAL_ERROR");
+  logger.error({ err }, "❌ Unhandled internal error:");
+  
+  // Do not expose raw internal messages (like DB schema errors) to the client
+  sendError(res, "An unexpected internal server error occurred.", 500, "INTERNAL_ERROR");
 }
 
 export { AppError };

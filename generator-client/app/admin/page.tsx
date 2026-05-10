@@ -40,6 +40,8 @@ import {
 } from "recharts";
 import { toast } from "react-hot-toast";
 
+import { useDebounce } from "use-debounce";
+
 interface AdminStats {
   totalUsers: number;
   totalImages: number;
@@ -92,6 +94,7 @@ export default function AdminDashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [images, setImages] = useState<GeneratedImage[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery] = useDebounce(searchQuery, 500);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -108,10 +111,10 @@ export default function AdminDashboard() {
           headers: { Authorization: `Bearer ${token}` },
         },
       );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setStats(data.stats);
-      setChartData(data.chartData);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setStats(json.data.stats);
+      setChartData(json.data.chartData);
     } catch (err) {
       console.error(err);
     }
@@ -127,15 +130,21 @@ export default function AdminDashboard() {
             headers: { Authorization: `Bearer ${token}` },
           },
         );
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        setUsers(data.users);
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error);
+        setUsers(json.data);
       } catch (err) {
         console.error(err);
       }
     },
     [getToken],
   );
+
+  useEffect(() => {
+    if (activeTab === "users") {
+      fetchUsers(debouncedSearchQuery);
+    }
+  }, [debouncedSearchQuery, activeTab, fetchUsers]);
 
   const fetchTransactions = useCallback(async () => {
     try {
@@ -146,8 +155,9 @@ export default function AdminDashboard() {
           headers: { Authorization: `Bearer ${token}` },
         },
       );
-      const data = await res.json();
-      if (data.success) setTransactions(data.transactions);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setTransactions(json.data);
     } catch (err) {
       console.error(err);
     }
@@ -162,8 +172,9 @@ export default function AdminDashboard() {
           headers: { Authorization: `Bearer ${token}` },
         },
       );
-      const data = await res.json();
-      if (data.success) setImages(data.images);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setImages(json.data);
     } catch (err) {
       console.error(err);
     }
@@ -450,7 +461,6 @@ export default function AdminDashboard() {
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
-                    fetchUsers(e.target.value);
                   }}
                 />
               </div>
@@ -773,6 +783,9 @@ export default function AdminDashboard() {
                     toast.success("Saved");
                     setEditingUser(null);
                     fetchUsers();
+                  } else {
+                    const errorJson = await res.json();
+                    toast.error(errorJson.error || "Failed to update user");
                   }
                 }}
               >

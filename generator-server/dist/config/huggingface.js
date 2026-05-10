@@ -3,10 +3,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateImageFromPrompt = void 0;
 const inference_1 = require("@huggingface/inference");
 const env_1 = require("./env");
+const logger_1 = require("../utils/logger");
 const hf = new inference_1.HfInference(env_1.env.huggingfaceToken);
 const generateImageFromPrompt = async (prompt) => {
     try {
-        console.log(`🖼️ Generating image for prompt: "${prompt}"`);
+        logger_1.logger.info(`🖼️ Generating image for prompt: "${prompt}"`);
         const result = await hf.textToImage({
             model: env_1.env.huggingfaceModel,
             inputs: prompt,
@@ -26,7 +27,7 @@ const generateImageFromPrompt = async (prompt) => {
         return Buffer.from(arrayBuffer);
     }
     catch (error) {
-        console.error("❌ Failed to generate image:", error?.message || error);
+        logger_1.logger.error("❌ Failed to generate image:", error?.message || error);
         throw new Error("Image generation failed. Please try again later.");
     }
 };

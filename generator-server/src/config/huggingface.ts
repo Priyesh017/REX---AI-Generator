@@ -1,5 +1,6 @@
 import { HfInference } from "@huggingface/inference";
 import { env } from "./env";
+import { logger } from "../utils/logger";
 
 const hf = new HfInference(env.huggingfaceToken);
 
@@ -7,7 +8,7 @@ export const generateImageFromPrompt = async (
   prompt: string
 ): Promise<Buffer> => {
   try {
-    console.log(`🖼️ Generating image for prompt: "${prompt}"`);
+    logger.info(`🖼️ Generating image for prompt: "${prompt}"`);
 
     const result = await hf.textToImage({
       model: env.huggingfaceModel,
@@ -29,7 +30,7 @@ export const generateImageFromPrompt = async (
     const arrayBuffer = await (result as unknown as Response).arrayBuffer();
     return Buffer.from(arrayBuffer);
   } catch (error: any) {
-    console.error("❌ Failed to generate image:", error?.message || error);
+    logger.error("❌ Failed to generate image:", error?.message || error);
     throw new Error("Image generation failed. Please try again later.");
   }
 };

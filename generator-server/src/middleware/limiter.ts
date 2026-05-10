@@ -1,4 +1,5 @@
 import rateLimit from "express-rate-limit";
+import slowDown from "express-slow-down";
 
 // General limiter for all API routes
 export const apiLimiter = rateLimit({
@@ -20,4 +21,18 @@ export const generationLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+});
+
+// Soft throttling for image generation to deter programmatic spam
+export const generationSpeedLimiter = slowDown({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  delayAfter: 5, // Allow 5 requests per 15 minutes, then...
+  delayMs: (hits) => (hits - 5) * 1000, // Add 1s delay per request over 5
+});
+
+// Soft throttling for comments to deter spam bots
+export const commentSpeedLimiter = slowDown({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  delayAfter: 3, // Allow 3 requests per 5 minutes, then...
+  delayMs: (hits) => (hits - 3) * 500, // Add 500ms delay per request over 3
 });

@@ -60,3 +60,21 @@ export async function deleteDraft(
     next(err);
   }
 }
+
+/**
+ * GET /api/studio/drafts/:id
+ * Get a specific draft asset.
+ */
+export async function getDraft(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const id = String(req.params.id);
+    const asset = await draftService.getDraft(req.userId!, id);
+    sendSuccess(res, { asset });
+  } catch (err) {
+    next(err);
+  }
+}

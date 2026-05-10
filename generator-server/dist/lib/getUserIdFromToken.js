@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getUserIdFromToken = void 0;
 const backend_1 = require("@clerk/backend");
 const env_1 = require("../config/env");
+const logger_1 = require("../utils/logger");
 const getUserIdFromToken = async (authHeader) => {
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
         throw new Error("Missing or malformed Authorization header");
@@ -18,7 +19,7 @@ const getUserIdFromToken = async (authHeader) => {
         return payload.sub;
     }
     catch (err) {
-        console.error("Token verification failed:", err);
+        logger_1.logger.error({ err }, "Token verification failed:");
         throw new Error("Invalid or expired token");
     }
 };

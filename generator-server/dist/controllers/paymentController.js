@@ -8,13 +8,14 @@ const razorpay_1 = require("../config/razorpay");
 const supabase_1 = require("../config/supabase");
 const crypto_1 = __importDefault(require("crypto"));
 const env_1 = require("../config/env");
+const logger_1 = require("../utils/logger");
 // Create a new Razorpay order and store it in Supabase
 const createOrder = async (req, res) => {
     const { planId } = req.body;
     const clerkId = req.userId;
-    console.log("Received request with:", { planId, clerkId });
+    logger_1.logger.info({ planId, clerkId }, "Received request with:");
     if (!planId || !clerkId) {
-        console.error("Missing data");
+        logger_1.logger.error("Missing data");
         return res.status(400).json({ success: false, error: "Missing data" });
     }
     const { data: plan, error: planError } = await supabase_1.supabase
@@ -23,7 +24,7 @@ const createOrder = async (req, res) => {
         .eq("id", planId)
         .single();
     if (planError || !plan) {
-        console.error("Plan fetch error:", planError);
+        logger_1.logger.error({ planError }, "Plan fetch error:");
         return res.status(404).json({ success: false, error: "Plan not found" });
     }
     try {
@@ -32,7 +33,7 @@ const createOrder = async (req, res) => {
             currency: "INR",
             receipt: `rcpt_${Date.now()}`,
         });
-        console.log("Created Razorpay order:", order.id);
+        logger_1.logger.info({ orderId: order.id }, "Created Razorpay order:");
         const { error: insertError } = await supabase_1.supabase.from("orders").insert([
             {
                 order_id: order.id,
@@ -42,17 +43,17 @@ const createOrder = async (req, res) => {
             },
         ]);
         if (insertError) {
-            console.error("❌ Failed to save order to database:", insertError);
+            logger_1.logger.error({ insertError }, "❌ Failed to save order to database:");
             return res.status(500).json({
                 success: false,
                 error: "Database error: Could not save order. Please try again."
             });
         }
-        console.log("✅ Order saved to database:", order.id);
+        logger_1.logger.info({ orderId: order.id }, "✅ Order saved to database:");
         return res.json({ success: true, order });
     }
     catch (err) {
-        console.error("Order creation error:", err);
+        logger_1.logger.error({ err }, "Order creation error:");
         return res.status(500).json({ success: false, error: err.message });
     }
 };
@@ -74,7 +75,7 @@ const paymentSuccess = async (req, res) => {
     if (generated_signature !== razorpay_signature) {
         return res.status(400).json({ success: false, error: "Invalid payment signature" });
     }
-    console.log(`🔍 Processing payment success for Order: ${razorpay_order_id}, User: ${clerkId}`);
+    logger_1.logger.info(`🔍 Processing payment success for Order: ${razorpay_order_id}, User: ${clerkId}`);
     // ✅ Retrieve order + plan details
     const { data: orderData, error: orderError } = await supabase_1.supabase
         .from("orders")
@@ -83,11 +84,11 @@ const paymentSuccess = async (req, res) => {
         .eq("clerk_id", clerkId)
         .single();
     if (orderError || !orderData) {
-        console.error("❌ Order not found in database:", {
+        logger_1.logger.error({
             searchingFor: razorpay_order_id,
             clerkId: clerkId,
             error: orderError
-        });
+        }, "❌ Order not found in database:");
         return res.status(404).json({ success: false, error: "Order not found" });
     }
     if (orderData.status === "paid") {
@@ -116,9 +117,13 @@ const paymentWebhook = async (req, res) => {
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET || "your_webhook_secret";
     // Razorpay sends the signature in the header
     const signature = req.headers["x-razorpay-signature"];
+    const rawBody = req.rawBody;
+    if (!rawBody) {
+        return res.status(400).json({ success: false, error: "Raw request body missing" });
+    }
     const expectedSignature = crypto_1.default
         .createHmac("sha256", secret)
-        .update(JSON.stringify(req.body))
+        .update(rawBody)
         .digest("hex");
     if (signature !== expectedSignature) {
         return res.status(400).json({ success: false, error: "Invalid webhook signature" });
@@ -133,7 +138,7 @@ const paymentWebhook = async (req, res) => {
             .eq("order_id", orderId)
             .single();
         if (orderError || !orderData) {
-            console.error("Webhook: Order not found", orderId);
+            logger_1.logger.error({ orderId }, "Webhook: Order not found");
             return res.status(404).json({ success: false });
         }
         // 2. Idempotency check
@@ -152,7 +157,7 @@ const paymentWebhook = async (req, res) => {
                 .from("orders")
                 .update({ status: "paid" })
                 .eq("order_id", orderId);
-            console.log(`✅ Webhook: Credited ${planCredits} to user ${orderData.clerk_id}`);
+            logger_1.logger.info(`✅ Webhook: Credited ${planCredits} to user ${orderData.clerk_id}`);
         }
     }
     res.json({ status: "ok" });

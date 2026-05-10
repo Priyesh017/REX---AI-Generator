@@ -4,16 +4,17 @@ import { razorpay } from "../config/razorpay";
 import { supabase } from "../config/supabase";
 import crypto from "crypto";
 import { env } from "../config/env";
+import { logger } from "../utils/logger";
 
 // Create a new Razorpay order and store it in Supabase
 export const createOrder = async (req: Request, res: Response) => {
   const { planId } = req.body;
   const clerkId = req.userId;
 
-  console.log("Received request with:", { planId, clerkId });
+  logger.info({ planId, clerkId }, "Received request with:");
 
   if (!planId || !clerkId) {
-    console.error("Missing data");
+    logger.error("Missing data");
     return res.status(400).json({ success: false, error: "Missing data" });
   }
 
@@ -24,7 +25,7 @@ export const createOrder = async (req: Request, res: Response) => {
     .single();
 
   if (planError || !plan) {
-    console.error("Plan fetch error:", planError);
+    logger.error({ planError }, "Plan fetch error:");
     return res.status(404).json({ success: false, error: "Plan not found" });
   }
 
@@ -35,7 +36,7 @@ export const createOrder = async (req: Request, res: Response) => {
       receipt: `rcpt_${Date.now()}`,
     });
 
-    console.log("Created Razorpay order:", order.id);
+    logger.info({ orderId: order.id }, "Created Razorpay order:");
 
     const { error: insertError } = await supabase.from("orders").insert([
       {
@@ -47,17 +48,17 @@ export const createOrder = async (req: Request, res: Response) => {
     ]);
 
     if (insertError) {
-      console.error("❌ Failed to save order to database:", insertError);
+      logger.error({ insertError }, "❌ Failed to save order to database:");
       return res.status(500).json({ 
         success: false, 
         error: "Database error: Could not save order. Please try again." 
       });
     }
 
-    console.log("✅ Order saved to database:", order.id);
+    logger.info({ orderId: order.id }, "✅ Order saved to database:");
     return res.json({ success: true, order });
   } catch (err: any) {
-    console.error("Order creation error:", err);
+    logger.error({ err }, "Order creation error:");
     return res.status(500).json({ success: false, error: err.message });
   }
 };
@@ -83,7 +84,7 @@ export const paymentSuccess = async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, error: "Invalid payment signature" });
   }
 
-  console.log(`🔍 Processing payment success for Order: ${razorpay_order_id}, User: ${clerkId}`);
+  logger.info(`🔍 Processing payment success for Order: ${razorpay_order_id}, User: ${clerkId}`);
 
   // ✅ Retrieve order + plan details
   const { data: orderData, error: orderError } = await supabase
@@ -94,11 +95,11 @@ export const paymentSuccess = async (req: Request, res: Response) => {
     .single();
 
   if (orderError || !orderData) {
-    console.error("❌ Order not found in database:", {
+    logger.error({
       searchingFor: razorpay_order_id,
       clerkId: clerkId,
       error: orderError
-    });
+    }, "❌ Order not found in database:");
     return res.status(404).json({ success: false, error: "Order not found" });
   }
 
@@ -135,9 +136,15 @@ export const paymentWebhook = async (req: Request, res: Response) => {
   // Razorpay sends the signature in the header
   const signature = req.headers["x-razorpay-signature"];
   
+  const rawBody = (req as any).rawBody;
+  
+  if (!rawBody) {
+    return res.status(400).json({ success: false, error: "Raw request body missing" });
+  }
+
   const expectedSignature = crypto
     .createHmac("sha256", secret)
-    .update(JSON.stringify(req.body))
+    .update(rawBody)
     .digest("hex");
 
   if (signature !== expectedSignature) {
@@ -157,7 +164,7 @@ export const paymentWebhook = async (req: Request, res: Response) => {
       .single();
 
     if (orderError || !orderData) {
-      console.error("Webhook: Order not found", orderId);
+      logger.error({ orderId }, "Webhook: Order not found");
       return res.status(404).json({ success: false });
     }
 
@@ -180,7 +187,7 @@ export const paymentWebhook = async (req: Request, res: Response) => {
         .update({ status: "paid" })
         .eq("order_id", orderId);
         
-      console.log(`✅ Webhook: Credited ${planCredits} to user ${orderData.clerk_id}`);
+      logger.info(`✅ Webhook: Credited ${planCredits} to user ${orderData.clerk_id}`);
     }
   }
 

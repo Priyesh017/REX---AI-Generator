@@ -1,21 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { motion, type Variants } from "framer-motion";
 import { 
   Grid3X3, 
   ImageOff, 
   Loader2, 
-  Calendar, 
   Sparkles,
-  Share2
+  Share2,
+  Users
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { postApi, type Post } from "@/lib/api/post.api";
 import { ApiRequestError } from "@/lib/api/client";
+import { socialApi, type SocialMeta } from "@/lib/api/social.api";
 import toast from "react-hot-toast";
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface PublicProfilePageProps {
   username: string;
@@ -32,29 +34,67 @@ const fadeUp: Variants = {
 
 export default function PublicProfilePage({ username }: PublicProfilePageProps) {
   const { getToken } = useAuth();
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const fetchProfileData = async () => {
-      setLoading(true);
-      try {
-        const api = postApi(getToken);
-        const data = await api.list({ username, limit: 24 });
-        setPosts(data.posts);
-      } catch (err) {
-        setError(err instanceof ApiRequestError ? err.message : "Failed to load profile");
-      } finally {
-        setLoading(false);
+  const { data, isLoading: loading, error } = useQuery({
+    queryKey: ['profile', username],
+    queryFn: async () => {
+      const pApi = postApi(getToken);
+      const sApi = socialApi(getToken);
+      
+      const [postData, socialData] = await Promise.all([
+        pApi.list({ username, limit: 24 }),
+        sApi.getProfileMeta(username)
+      ]);
+      
+      return { posts: postData.posts, socialStats: socialData };
+    }
+  });
+
+  const posts = data?.posts || [];
+  const socialStats = data?.socialStats || { followers: 0, following: 0, isFollowing: false };
+
+  const toggleFollowMutation = useMutation({
+    mutationFn: async () => {
+      const api = socialApi(getToken);
+      return api.toggleFollow(username);
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['profile', username] });
+      const previousData = queryClient.getQueryData<{posts: Post[], socialStats: SocialMeta}>(['profile', username]);
+      
+      queryClient.setQueryData(['profile', username], (old: {posts: Post[], socialStats: SocialMeta} | undefined) => {
+        if (!old) return old;
+        const isFollowing = !old.socialStats.isFollowing;
+        return {
+          ...old,
+          socialStats: {
+            ...old.socialStats,
+            isFollowing,
+            followers: (old.socialStats.followers ?? 0) + (isFollowing ? 1 : -1)
+          }
+        };
+      });
+      return { previousData };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(['profile', username], context.previousData);
       }
-    };
-    fetchProfileData();
-  }, [username, getToken]);
+      toast.error(err instanceof ApiRequestError ? err.message : "Failed to follow user");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile', username] });
+    }
+  });
 
   const handleShareProfile = () => {
     navigator.clipboard.writeText(window.location.href);
     toast.success("Profile link copied!");
+  };
+
+  const handleToggleFollow = () => {
+    toggleFollowMutation.mutate();
   };
 
   if (loading) {
@@ -87,7 +127,7 @@ export default function PublicProfilePage({ username }: PublicProfilePageProps) 
           className="flex flex-col md:flex-row items-center md:items-end gap-6 mb-16 border-b border-zinc-800/50 pb-12"
         >
           {/* Avatar */}
-          <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2.5rem] overflow-hidden border-2 border-zinc-800 relative bg-zinc-900 shadow-2xl">
+          <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2.5rem] overflow-hidden border-2 border-zinc-800 relative bg-zinc-900 shadow-2xl shrink-0">
             <Image
               src={posts[0]?.author?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`}
               alt={username}
@@ -107,27 +147,31 @@ export default function PublicProfilePage({ username }: PublicProfilePageProps) 
                 <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
                 <span>AI Creator</span>
               </div>
+              <div className="flex items-center gap-1.5 text-zinc-400">
+                <Users className="w-3.5 h-3.5" />
+                <span>{socialStats.followers} Followers</span>
+              </div>
               <div className="flex items-center gap-1.5">
                 <Grid3X3 className="w-3.5 h-3.5" />
                 <span>{posts.length} Posts</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5" />
-                <span>Joined May 2024</span>
               </div>
             </div>
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3">
+          <div className="flex gap-3 mt-6 md:mt-0">
             <button
               onClick={handleShareProfile}
               className="p-3 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 transition"
             >
               <Share2 className="w-5 h-5" />
             </button>
-            <button className="px-8 py-3 rounded-2xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 transition shadow-lg shadow-indigo-500/20 active:scale-95">
-              Follow
+            <button 
+              onClick={handleToggleFollow}
+              disabled={toggleFollowMutation.isPending}
+              className={`px-8 py-3 rounded-2xl font-bold transition shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${socialStats.isFollowing ? 'bg-zinc-800 text-white hover:bg-zinc-700 shadow-none' : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-500/20'}`}
+            >
+              {toggleFollowMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : socialStats.isFollowing ? 'Following' : 'Follow'}
             </button>
           </div>
         </motion.div>

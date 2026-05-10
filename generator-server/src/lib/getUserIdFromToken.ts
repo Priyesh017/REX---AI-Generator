@@ -1,5 +1,6 @@
 import { verifyToken } from "@clerk/backend";
 import { env } from "../config/env";
+import { logger } from "../utils/logger";
 
 export const getUserIdFromToken = async (
   authHeader?: string
@@ -21,7 +22,7 @@ export const getUserIdFromToken = async (
 
     return payload.sub;
   } catch (err) {
-    console.error("Token verification failed:", err);
+    logger.error({ err }, "Token verification failed:");
     throw new Error("Invalid or expired token");
   }
 };

@@ -4,10 +4,11 @@
 // Private draft asset gallery — visual grid of the user's studio assets.
 // Replaces the old table-based "prompt history" with a proper photo grid.
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { useAuth } from "@clerk/nextjs";
 import { AnimatePresence, motion } from "framer-motion";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Trash2,
   Copy,
@@ -33,69 +34,57 @@ import PublishModal from "./PublishModal";
 
 export default function DraftsPanel() {
   const { getToken } = useAuth();
-  const [assets, setAssets] = useState<DraftAsset[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasNext, setHasNext] = useState(false);
-  const [page, setPage] = useState(1);
+  const queryClient = useQueryClient();
   const [lightboxAsset, setLightboxAsset] = useState<DraftAsset | null>(null);
-  const [publishingAsset, setPublishingAsset] = useState<DraftAsset | null>(
-    null,
-  );
+  const [publishingAsset, setPublishingAsset] = useState<DraftAsset | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchDrafts = useCallback(
-    async (pageNum: number, append = false) => {
-      if (!append) {
-        setLoading(true);
-        setError(null);
-      } else {
-        setLoadingMore(true);
-      }
-
-      try {
-        const api = studioApi(getToken);
-        const result = await api.listDrafts(pageNum, 12);
-
-        setAssets((prev) =>
-          append ? [...prev, ...result.assets] : result.assets,
-        );
-        setHasNext(result.meta.pagination.hasNext);
-        setPage(pageNum);
-      } catch (err) {
-        const msg =
-          err instanceof ApiRequestError
-            ? err.message
-            : "Failed to load drafts";
-        if (!append) setError(msg);
-        else toast.error(msg);
-      } finally {
-        setLoading(false);
-        setLoadingMore(false);
-      }
-    },
-    [getToken],
-  );
-
-  useEffect(() => {
-    fetchDrafts(1);
-  }, [fetchDrafts]);
-
-  const handleDelete = async (id: string) => {
-    setDeletingId(id);
-    try {
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    error: fetchError,
+    refetch
+  } = useInfiniteQuery({
+    queryKey: ['drafts'],
+    queryFn: async ({ pageParam = 1 }) => {
       const api = studioApi(getToken);
-      await api.deleteDraft(id);
-      setAssets((prev) => prev.filter((a) => a.id !== id));
-      // Close lightbox if open asset was deleted
-      if (lightboxAsset?.id === id) setLightboxAsset(null);
+      return api.listDrafts(pageParam, 12);
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      return lastPage.meta.pagination.hasNext ? lastPage.meta.pagination.page + 1 : undefined;
+    },
+  });
+
+  const assets = data?.pages.flatMap((page) => page.assets) || [];
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const api = studioApi(getToken);
+      return api.deleteDraft(id);
+    },
+    onMutate: (id) => {
+      setDeletingId(id);
+    },
+    onSuccess: (_, id) => {
       toast.success("Draft deleted");
-    } catch {
+      queryClient.invalidateQueries({ queryKey: ['drafts'] });
+      if (lightboxAsset?.id === id) setLightboxAsset(null);
+    },
+    onError: () => {
       toast.error("Failed to delete draft");
-    } finally {
+    },
+    onSettled: () => {
       setDeletingId(null);
     }
+  });
+
+  const handleDelete = (id: string) => {
+    deleteMutation.mutate(id);
   };
 
   const handleCopyPrompt = (promptText: string) => {
@@ -118,7 +107,7 @@ export default function DraftsPanel() {
   };
 
   // ── Loading skeleton ────────────────────────────────────────────────────────
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         {[...Array(8)].map((_, i) => (
@@ -132,13 +121,15 @@ export default function DraftsPanel() {
   }
 
   // ── Error state ─────────────────────────────────────────────────────────────
-  if (error) {
+  if (isError) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4 text-zinc-600">
         <ImageOff className="w-10 h-10" />
-        <p className="text-sm">{error}</p>
+        <p className="text-sm">
+          {fetchError instanceof ApiRequestError ? fetchError.message : "Failed to load drafts"}
+        </p>
         <button
-          onClick={() => fetchDrafts(1)}
+          onClick={() => refetch()}
           className="flex items-center gap-2 text-xs border border-zinc-700 text-zinc-400 hover:text-white px-4 py-2 rounded-full transition"
         >
           <RefreshCcw className="w-3.5 h-3.5" />
@@ -197,28 +188,26 @@ export default function DraftsPanel() {
           draft={publishingAsset}
           onClose={() => setPublishingAsset(null)}
           onSuccess={() => {
-            setAssets((prev) =>
-              prev.filter((a) => a.id !== publishingAsset.id),
-            );
+            queryClient.invalidateQueries({ queryKey: ['drafts'] });
             setPublishingAsset(null);
           }}
         />
       )}
 
       {/* Load more */}
-      {hasNext && (
+      {hasNextPage && (
         <div className="flex justify-center mt-8">
           <button
-            onClick={() => fetchDrafts(page + 1, true)}
-            disabled={loadingMore}
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
             className="flex items-center gap-2 border border-zinc-700 text-zinc-400 hover:text-white text-sm px-6 py-2.5 rounded-full transition-all disabled:opacity-50"
           >
-            {loadingMore ? (
+            {isFetchingNextPage ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <RefreshCcw className="w-4 h-4" />
             )}
-            {loadingMore ? "Loading…" : "Load More"}
+            {isFetchingNextPage ? "Loading…" : "Load More"}
           </button>
         </div>
       )}

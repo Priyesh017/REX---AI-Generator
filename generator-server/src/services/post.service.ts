@@ -32,7 +32,12 @@ export async function createPostFromDraft(
     throw new AppError("Content flagged by moderation filters. Publishing denied.", 400, "BAD_REQUEST");
   }
 
-  // 4. Create the post
+  // 4. Update the draft's title if a new one was provided
+  if (title && title !== draft.title) {
+    await draftRepo.updateTitle(draftId, title);
+  }
+
+  // 5. Create the post
   const post = await postRepo.create({
     authorProfileId: profile.id,
     generatedAssetId: draftId,

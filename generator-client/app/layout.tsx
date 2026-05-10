@@ -5,6 +5,7 @@ import "./globals.css";
 import { dark } from "@clerk/themes";
 import { Toaster } from "react-hot-toast";
 import Script from "next/script";
+import { QueryProvider } from "@/components/providers/QueryProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -51,7 +52,9 @@ export default function RootLayout({
             src="https://checkout.razorpay.com/v1/checkout.js"
             strategy="afterInteractive"
           />
-          {children}
+          <QueryProvider>
+            {children}
+          </QueryProvider>
           <Toaster
             position="top-right"
             reverseOrder={false}

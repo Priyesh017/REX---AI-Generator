@@ -24,13 +24,17 @@ const fadeUp: Variants = {
   }),
 };
 
-export default function ExploreFeedPage() {
+export default function ExploreFeedPage({ initialPosts = [] }: { initialPosts?: Post[] }) {
   const { getToken } = useAuth();
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState<Post[]>(initialPosts);
+  const [loading, setLoading] = useState(initialPosts.length === 0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // If we already have server-rendered posts, we don't strictly need to refetch immediately,
+    // but we can background refresh or just rely on SSR. For now, if we have them, we skip.
+    if (initialPosts.length > 0) return;
+
     const fetchFeed = async () => {
       setLoading(true);
       try {
@@ -47,7 +51,7 @@ export default function ExploreFeedPage() {
       }
     };
     fetchFeed();
-  }, [getToken]);
+  }, [getToken, initialPosts]);
 
   return (
     <div className="min-h-screen pt-32 pb-20 px-4 md:px-8">

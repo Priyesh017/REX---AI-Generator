@@ -11,6 +11,8 @@ import {
   NotFoundError,
   ForbiddenError,
 } from "../lib/errors";
+import sharp from "sharp";
+import { logger } from "../utils/logger";
 
 export interface GenerateResult {
   asset: draftRepo.DraftAsset;
@@ -24,41 +26,60 @@ export async function generateDraft(
   clerkId: string,
   prompt: string
 ): Promise<GenerateResult> {
-  // 1. Parallelize initial setup (User resolution + Title generation)
-  // We resolve the user first to ensure they exist and have credits before starting the expensive AI call.
-  const [user, title] = await Promise.all([
-    profileRepo.resolveOrProvisionUser(clerkId),
-    Promise.resolve(generateTitleFromPrompt(prompt)),
-  ]);
+  // 1. Resolve user to ensure they exist in DB
+  const user = await profileRepo.resolveOrProvisionUser(clerkId);
 
-  if (user.credits < 1) {
+  // 2. Reserve credit atomically *before* expensive work
+  const reserved = await profileRepo.reserveCredit(clerkId);
+  if (!reserved) {
     throw new PaymentRequiredError(
       "You have no credits remaining. Purchase more to continue generating."
     );
   }
 
-  // 2. Core Generation (Sequential)
-  // Image generation is the primary bottleneck; it must complete before we can upload.
-  const imageBuffer = await generateImageFromPrompt(prompt);
+  try {
+    // 3. Generate Title quickly
+    const title = await generateTitleFromPrompt(prompt);
 
-  // 3. Storage Upload
-  const imageUrl = await uploadImageToBucket(imageBuffer);
-
-  // 4. Parallelize Completion Tasks
-  // Persisting the record and deducting credits can happen simultaneously to shave off final ms.
-  const [asset] = await Promise.all([
-    draftRepo.create({
+    // 4. Create pending record immediately
+    const asset = await draftRepo.create({
       profileId: user.id,
       title,
       prompt,
-      imageUrl,
-    }),
-    profileRepo.decrementCredit(clerkId, user.credits),
-  ]);
+      imageUrl: "",
+    }, true); // true for isPending
 
-  const creditsRemaining = user.credits - 1;
+    const creditsRemaining = Math.max(0, user.credits - 1);
 
-  return { asset, creditsRemaining };
+    // 5. Fire background job for the expensive image generation
+    (async () => {
+      try {
+        logger.info(`[Job Started] Generating image for asset ${asset.id}...`);
+        const imageBuffer = await generateImageFromPrompt(prompt);
+        
+        // Optimize the image using Sharp
+        const optimizedBuffer = await sharp(imageBuffer)
+          .webp({ quality: 80 })
+          .toBuffer();
+
+        const imageUrl = await uploadImageToBucket(optimizedBuffer);
+        
+        await draftRepo.updateGenerationResult(asset.id, imageUrl);
+        logger.info(`[Job Finished] Asset ${asset.id} completed successfully.`);
+      } catch (error) {
+        logger.error({ error }, "❌ Failed to process generated image:");
+        await draftRepo.markFailed(asset.id);
+        await profileRepo.refundCredit(clerkId);
+      }
+    })();
+
+    // 6. Return immediately to the client
+    return { asset, creditsRemaining };
+  } catch (error) {
+    // If the initial setup fails (e.g. title generation or DB insert), refund credit
+    await profileRepo.refundCredit(clerkId);
+    throw error;
+  }
 }
 
 /**
@@ -91,4 +112,24 @@ export async function deleteDraft(
   }
 
   await draftRepo.deleteOwned(assetId, clerkId);
+}
+
+/**
+ * Get a specific draft asset — verifies ownership.
+ */
+export async function getDraft(
+  clerkId: string,
+  assetId: string
+) {
+  const profile = await profileRepo.findByClerkId(clerkId);
+  if (!profile) throw new ForbiddenError("Profile not found");
+
+  const asset = await draftRepo.findById(assetId);
+  if (!asset) throw new NotFoundError("Draft asset not found");
+
+  if (asset.owner_profile_id !== profile.id) {
+    throw new ForbiddenError("You can only view your own draft assets");
+  }
+
+  return asset;
 }

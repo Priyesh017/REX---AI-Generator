@@ -8,6 +8,7 @@ export interface DraftAsset {
   prompt: string;
   title: string | null;
   image_url: string;
+  generation_status: "pending" | "completed" | "failed";
   created_at: string;
 }
 
@@ -42,6 +43,12 @@ export function studioApi(getToken: () => Promise<string | null>) {
           `/studio/drafts?page=${page}&limit=${limit}`
         )
         .then((r) => ({ assets: r.data, meta: r.meta })),
+
+    /** GET /studio/drafts/:id — get a specific draft asset */
+    getDraft: (id: string) =>
+      client
+        .get<{ data: { asset: DraftAsset } }>(`/studio/drafts/${id}`)
+        .then((r) => r.data),
 
     /** DELETE /studio/drafts/:id */
     deleteDraft: (id: string) =>
