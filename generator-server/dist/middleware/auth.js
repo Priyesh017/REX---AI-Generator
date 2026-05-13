@@ -30,7 +30,7 @@ const requireAuth = async (req, res, next) => {
         next();
     }
     catch (error) {
-        logger_1.logger.error("❌ JWT verification failed:", error?.message || error);
+        logger_1.logger.error("❌ JWT verification failed");
         // Handle different types of errors from Clerk (e.g., expired token)
         const errorMessage = error?.message?.includes("jwt expired")
             ? "Unauthorized: Token has expired"

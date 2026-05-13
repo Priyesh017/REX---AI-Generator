@@ -96,25 +96,56 @@ const paymentSuccess = async (req, res) => {
     }
     const planCredits = orderData.plan?.credits;
     if (!planCredits || typeof planCredits !== "number") {
-        return res.status(400).json({ success: false, error: "Invalid plan credits" });
+        logger_1.logger.error(`❌ Invalid plan credits for order ${razorpay_order_id}`);
+        return res.status(400).json({ error: "Invalid plan credits configuration" });
     }
+    // 4. Update order status and increment credits atomically (as much as possible without a single RPC)
+    // We update the status to 'paid' and store the payment_id.
+    // We use .eq("status", "created") to ensure we only process this ONCE.
+    const { data: updatedOrder, error: updateError } = await supabase_1.supabase
+        .from("orders")
+        .update({
+        status: "paid",
+        payment_id: razorpay_payment_id,
+        updated_at: new Date().toISOString()
+    })
+        .eq("order_id", razorpay_order_id)
+        .eq("status", "created")
+        .select()
+        .single();
+    if (updateError) {
+        // If we couldn't update, it might be because it was already processed
+        const { data: existingOrder } = await supabase_1.supabase
+            .from("orders")
+            .select("status")
+            .eq("order_id", razorpay_order_id)
+            .single();
+        if (existingOrder?.status === "paid") {
+            return res.json({ success: true, message: "Order already processed" });
+        }
+        throw updateError;
+    }
+    if (!updatedOrder) {
+        return res.status(400).json({ error: "Order not found or already processed" });
+    }
+    // 5. Increment credits for the user
     const { error: creditError } = await supabase_1.supabase.rpc("increment_credits", {
         user_clerk_id: clerkId,
         credits_to_add: planCredits,
     });
     if (creditError) {
-        return res.status(500).json({ success: false, error: creditError.message });
+        logger_1.logger.error({ creditError }, `❌ Failed to increment credits for user ${clerkId}:`);
+        // NOTE: In a production app, you might want to rollback the status or flag it for manual review.
+        // For now, we log it heavily.
+        return res.status(500).json({ error: "Payment succeeded but credit update failed. Please contact support." });
     }
-    await supabase_1.supabase
-        .from("orders")
-        .update({ status: "paid" })
-        .eq("order_id", razorpay_order_id);
-    return res.json({ success: true, message: "Credits updated successfully" });
+    logger_1.logger.info(`✅ Successfully processed payment for user ${clerkId}. Added ${planCredits} credits.`);
+    return res.json({ success: true, message: "Credits added successfully" });
 };
 exports.paymentSuccess = paymentSuccess;
 // Handle Razorpay Webhook (Server-to-Server)
 const paymentWebhook = async (req, res) => {
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET || "your_webhook_secret";
+    const secret = env_1.env.razorpayWebhookSecret;
     // Razorpay sends the signature in the header
     const signature = req.headers["x-razorpay-signature"];
     const rawBody = req.rawBody;
@@ -141,24 +172,33 @@ const paymentWebhook = async (req, res) => {
             logger_1.logger.error({ orderId }, "Webhook: Order not found");
             return res.status(404).json({ success: false });
         }
-        // 2. Idempotency check
-        if (orderData.status === "paid") {
-            return res.json({ success: true, message: "Already processed" });
-        }
-        // 3. Add credits
         const planCredits = orderData.plan?.credits;
-        if (planCredits) {
-            await supabase_1.supabase.rpc("increment_credits", {
-                user_clerk_id: orderData.clerk_id,
-                credits_to_add: planCredits,
-            });
-            // 4. Update status
-            await supabase_1.supabase
-                .from("orders")
-                .update({ status: "paid" })
-                .eq("order_id", orderId);
-            logger_1.logger.info(`✅ Webhook: Credited ${planCredits} to user ${orderData.clerk_id}`);
+        // 2. Idempotency check
+        // 3. Atomically update status and increment credits
+        const { data: updatedOrder, error: updateError } = await supabase_1.supabase
+            .from("orders")
+            .update({
+            status: "paid",
+            payment_id: event.payload.payment.entity.id,
+            updated_at: new Date().toISOString()
+        })
+            .eq("order_id", orderId)
+            .eq("status", "created")
+            .select()
+            .single();
+        if (updateError || !updatedOrder) {
+            logger_1.logger.info(`ℹ️ Webhook: Order ${orderId} already processed or not found.`);
+            return res.json({ success: true });
         }
+        // 4. Increment credits
+        const { error: creditError } = await supabase_1.supabase.rpc("increment_credits", {
+            user_clerk_id: orderData.clerk_id,
+            credits_to_add: planCredits,
+        });
+        if (creditError) {
+            logger_1.logger.error({ creditError }, `❌ Webhook: Failed to increment credits for user ${orderData.clerk_id}:`);
+        }
+        return res.json({ success: true });
     }
     res.json({ status: "ok" });
 };
