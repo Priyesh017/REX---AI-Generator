@@ -1,8 +1,9 @@
-# AGENT.md — REX Repository Operating Manual
+# AGENT.md - REX Repository Operating Manual
 
 > **This file is the primary control surface for all AI agents working in this repository.**
 > Read this before reading any other file. Follow every rule marked [NON-NEGOTIABLE].
-> Skills, hooks, subagents, and workflows in `/.agent/` extend this file — they never override it.
+> Skills, hooks, subagents, and workflows in `/.agent/` extend this file; they never override it.
+> For local setup, environment templates, package-manager choice, and verification commands, see `README.md`.
 
 ---
 
@@ -108,6 +109,19 @@ generator-server/src/
 | AI Generation | Hugging Face | Via generateController.ts |
 | Payments | Razorpay | Orders, webhooks, credits |
 | State (client) | TanStack Query + Zustand | Server/global state split |
+
+---
+
+## 4.1 Current vs Target Architecture
+
+This repository is mid-transition. Some older backend files still call Supabase directly from controllers. Treat those files as legacy surfaces.
+
+Rules for agents:
+- New backend code must follow `routes -> controllers -> services -> repositories`.
+- When refactoring a legacy controller, move DB access into a repository and business decisions into a service.
+- Do not copy legacy direct-Supabase controller patterns into new work.
+- If a task only requires a narrow fix in legacy code, keep the fix minimal and note the architectural debt in the handoff.
+- Supabase is the current database client. Drizzle remains the preferred target for future schema/domain work, but do not introduce Drizzle casually in a small feature.
 
 ---
 

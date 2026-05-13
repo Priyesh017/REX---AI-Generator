@@ -47,7 +47,7 @@ export const requireAuth = async (
     // Proceed to the next middleware or route handler
     next();
   } catch (error: any) {
-    logger.error("❌ JWT verification failed:", error?.message || error);
+    logger.error("❌ JWT verification failed");
 
     // Handle different types of errors from Clerk (e.g., expired token)
     const errorMessage = error?.message?.includes("jwt expired")

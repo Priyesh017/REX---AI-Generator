@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { studioApi, type DraftAsset } from "@/lib/api/studio.api";
 import { ApiRequestError } from "@/lib/api/client";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   saveImageUrlToCookie,
   getImageUrlFromCookie,
@@ -26,6 +27,7 @@ import {
 import PublishModal from "./PublishModal";
 
 export default function GeneratorPanel() {
+  const queryClient = useQueryClient();
   const [prompt, setPrompt] = useState("");
   const [result, setResult] = useState<DraftAsset | null>(null);
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
@@ -71,6 +73,7 @@ export default function GeneratorPanel() {
       const genResult = await api.generate(trimmed);
 
       setCreditsLeft(genResult.creditsRemaining);
+      queryClient.invalidateQueries({ queryKey: ["credits"] });
 
       if (genResult.asset.generation_status === "completed") {
         saveImageUrlToCookie(genResult.asset.image_url);

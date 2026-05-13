@@ -60,12 +60,12 @@ export async function create(payload: CreatePostPayload): Promise<PostRecord> {
 }
 
 export async function findById(id: string): Promise<PostRecord | null> {
-  // 1. Fetch post and asset
-  const { data: post, error } = await supabase
+  const { data, error } = await supabase
     .from("posts")
     .select(`
       *,
-      asset:generated_assets!inner(image_url, prompt, title)
+      asset:generated_assets!inner(image_url, prompt, title),
+      author:profiles(username, display_name, avatar_url)
     `)
     .eq("id", id)
     .single();
@@ -75,14 +75,7 @@ export async function findById(id: string): Promise<PostRecord | null> {
     throw new Error(`DB error in post findById: ${error.message}`);
   }
 
-  // 2. Fetch author profile
-  const { data: author } = await supabase
-    .from("profiles")
-    .select("username, display_name, avatar_url")
-    .eq("id", post.author_profile_id)
-    .single();
-
-  return formatPost({ ...post, author });
+  return formatPost(data);
 }
 
 export async function listPublic(
@@ -115,7 +108,8 @@ export async function listPublic(
     .from("posts")
     .select(`
       *,
-      asset:generated_assets!inner(image_url, prompt, title)
+      asset:generated_assets!inner(image_url, prompt, title),
+      author:profiles(username, display_name, avatar_url)
     `, { count: "exact" });
 
   if (filterProfileId) {
@@ -131,22 +125,8 @@ export async function listPublic(
     throw new Error(`DB error in post listPublic: ${error.message}`);
   }
 
-  // 3. Batch fetch author profiles for the returned posts
-  const authorIds = [...new Set((postsData ?? []).map((p) => p.author_profile_id))];
-  const { data: authorsData } = await supabase
-    .from("profiles")
-    .select("id, username, display_name, avatar_url")
-    .in("id", authorIds);
-
-  const authorMap = new Map((authorsData ?? []).map((a) => [a.id, a]));
-
   const total = count ?? 0;
-  const posts = (postsData ?? []).map((p) =>
-    formatPost({
-      ...p,
-      author: authorMap.get(p.author_profile_id),
-    })
-  );
+  const posts = (postsData ?? []).map((p) => formatPost(p));
 
   return {
     posts,
@@ -162,7 +142,7 @@ export async function listPublic(
 export async function deleteOwned(id: string, profileId: string): Promise<boolean> {
   const { error, count } = await supabase
     .from("posts")
-    .delete()
+    .delete({ count: "exact" })
     .match({ id, author_profile_id: profileId });
 
   if (error) {

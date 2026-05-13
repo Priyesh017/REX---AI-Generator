@@ -2,29 +2,9 @@
 // API functions for the studio/generation domain.
 
 import { createApiClient } from "./client";
+import type { DraftAsset, DraftListMeta, GenerateResult } from "@/types/studio";
 
-export interface DraftAsset {
-  id: string;
-  prompt: string;
-  title: string | null;
-  image_url: string;
-  generation_status: "pending" | "completed" | "failed";
-  created_at: string;
-}
-
-export interface GenerateResult {
-  asset: DraftAsset;
-  creditsRemaining: number;
-}
-
-export interface DraftListMeta {
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    hasNext: boolean;
-  };
-}
+export type { DraftAsset, DraftListMeta, GenerateResult } from "@/types/studio";
 
 export function studioApi(getToken: () => Promise<string | null>) {
   const client = createApiClient(getToken);

@@ -25,8 +25,9 @@ export async function createPostFromDraft(
   }
 
   // 3. Simple Moderation Check
-  const restrictedWords = ["nsfw", "gore", "violence", "hate"];
-  const contentToCheck = `${title || ""} ${caption || ""} ${draft.prompt || ""}`.toLowerCase();
+  const restrictedWords = ["nsfw", "gore", "violence", "hate", "spam"];
+  const finalTitle = title || draft.title || "";
+  const contentToCheck = `${finalTitle} ${caption || ""} ${draft.prompt || ""}`.toLowerCase();
   
   if (restrictedWords.some(word => contentToCheck.includes(word))) {
     throw new AppError("Content flagged by moderation filters. Publishing denied.", 400, "BAD_REQUEST");

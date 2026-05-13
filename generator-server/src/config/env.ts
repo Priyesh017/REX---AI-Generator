@@ -18,6 +18,7 @@ const envSchema = z.object({
     .transform((val) => (val ? parseInt(val, 10) : 5001)),
   RAZORPAY_KEY_ID: z.string().min(1),
   RAZORPAY_KEY_SECRET: z.string().min(1),
+  RAZORPAY_WEBHOOK_SECRET: z.string().min(1),
   ADMIN_ID: z.string().optional(),
 });
 
@@ -44,5 +45,6 @@ export const env = {
   port: Number(raw.PORT || 5001),
   razorpayKeyId: raw.RAZORPAY_KEY_ID,
   razorpayKeySecret: raw.RAZORPAY_KEY_SECRET,
+  razorpayWebhookSecret: raw.RAZORPAY_WEBHOOK_SECRET,
   adminId: raw.ADMIN_ID,
 };

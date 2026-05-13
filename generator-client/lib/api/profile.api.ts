@@ -2,19 +2,9 @@
 // API functions for the profile domain.
 
 import { createApiClient } from "./client";
+import type { ProfileData } from "@/types/profile";
 
-export interface ProfileData {
-  id: string;
-  clerkId: string;
-  username: string;
-  displayName: string;
-  bio: string | null;
-  avatarUrl: string | null;
-  plan: string;
-  subscriptionStatus: string | null;
-  creditsLeft: number;
-  joinedAt: string;
-}
+export type { ProfileData } from "@/types/profile";
 
 export function profileApi(getToken: () => Promise<string | null>) {
   const client = createApiClient(getToken);

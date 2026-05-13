@@ -15,9 +15,9 @@ export async function likePost(postId: string, profileId: string): Promise<boole
 }
 
 export async function unlikePost(postId: string, profileId: string): Promise<boolean> {
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from("post_likes")
-    .delete()
+    .delete({ count: "exact" })
     .match({ post_id: postId, profile_id: profileId });
 
   if (error) {
@@ -155,7 +155,7 @@ export async function listComments(postId: string, page: number, limit: number) 
 export async function deleteComment(commentId: string, profileId: string) {
   const { error, count } = await supabase
     .from("comments")
-    .delete()
+    .delete({ count: "exact" })
     .match({ id: commentId, author_profile_id: profileId });
 
   if (error) throw new Error(`DB error in deleteComment: ${error.message}`);

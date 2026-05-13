@@ -18,6 +18,7 @@ import {
   Compass,
 } from "lucide-react";
 import { creditsApi } from "@/lib/api/credits";
+import { useQuery } from "@tanstack/react-query";
 
 interface MenuItem {
   icon: React.ReactNode;
@@ -30,39 +31,22 @@ interface MenuItem {
 const Navbar = () => {
   const { isSignedIn, getToken } = useAuth();
   const pathname = usePathname();
-  const [credits, setCredits] = useState<number | null>(null);
-  const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (!mounted || !isSignedIn) {
-      setCredits(null);
-      return;
-    }
-
-    let cancelled = false;
-    const fetchCredits = async () => {
-      setLoading(true);
-      try {
-        const api = creditsApi(getToken);
-        const creditsLeft = await api.getCredits();
-        if (!cancelled) setCredits(creditsLeft);
-      } catch {
-        if (!cancelled) setCredits(null);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    fetchCredits();
-    return () => {
-      cancelled = true;
-    };
-  }, [isSignedIn, getToken, mounted]);
+  const { data: credits, isLoading: loading } = useQuery({
+    queryKey: ["credits"],
+    queryFn: async () => {
+      if (!isSignedIn) return null;
+      const api = creditsApi(getToken);
+      return api.getCredits();
+    },
+    enabled: mounted && isSignedIn,
+    staleTime: 1000 * 60, // 1 minute
+  });
 
   const menuItems = [
     {

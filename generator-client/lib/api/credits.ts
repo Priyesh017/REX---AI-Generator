@@ -3,7 +3,7 @@
 // Uses the new /api/profile/me endpoint and correct response shape.
 
 import { createApiClient } from "./client";
-import type { ProfileData } from "./profile.api";
+import type { ProfileData } from "@/types/profile";
 
 export function creditsApi(getToken: () => Promise<string | null>) {
   const client = createApiClient(getToken);

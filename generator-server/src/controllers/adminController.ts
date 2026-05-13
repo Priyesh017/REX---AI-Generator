@@ -84,7 +84,7 @@ export const getAdminTransactions = async (req: Request, res: Response) => {
   // Flatten the data for the frontend
   const flattened = transactions?.map((t: any) => ({
     ...t,
-    user_name: profileMap.get(t.user_id) || "Unknown",
+    user_name: profileMap.get(t.clerk_id) || "Unknown",
     user_email: "N/A",
     plan_name: t.plans?.name || "N/A"
   }));

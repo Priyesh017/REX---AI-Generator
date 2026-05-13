@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { postApi, type Post } from "@/lib/api/post.api";
+import { postApi, type ListPostsResponse, type Post } from "@/lib/api/post.api";
 import { ApiRequestError } from "@/lib/api/client";
 import { socialApi, type SocialMeta } from "@/lib/api/social.api";
 import toast from "react-hot-toast";
@@ -21,6 +21,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface PublicProfilePageProps {
   username: string;
+}
+
+interface ProfileQueryData {
+  posts: Post[];
+  meta: ListPostsResponse["meta"];
+  socialStats: SocialMeta;
 }
 
 const fadeUp: Variants = {
@@ -47,7 +53,11 @@ export default function PublicProfilePage({ username }: PublicProfilePageProps) 
         sApi.getProfileMeta(username)
       ]);
       
-      return { posts: postData.posts, socialStats: socialData };
+      return { 
+        posts: postData.posts, 
+        meta: postData.meta,
+        socialStats: socialData 
+      };
     }
   });
 
@@ -61,9 +71,9 @@ export default function PublicProfilePage({ username }: PublicProfilePageProps) 
     },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['profile', username] });
-      const previousData = queryClient.getQueryData<{posts: Post[], socialStats: SocialMeta}>(['profile', username]);
+      const previousData = queryClient.getQueryData<ProfileQueryData>(['profile', username]);
       
-      queryClient.setQueryData(['profile', username], (old: {posts: Post[], socialStats: SocialMeta} | undefined) => {
+      queryClient.setQueryData(['profile', username], (old: ProfileQueryData | undefined) => {
         if (!old) return old;
         const isFollowing = !old.socialStats.isFollowing;
         return {
@@ -153,7 +163,7 @@ export default function PublicProfilePage({ username }: PublicProfilePageProps) 
               </div>
               <div className="flex items-center gap-1.5">
                 <Grid3X3 className="w-3.5 h-3.5" />
-                <span>{posts.length} Posts</span>
+                <span>{data?.meta?.pagination?.total ?? posts.length} Posts</span>
               </div>
             </div>
           </div>

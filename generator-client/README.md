@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# REX Generator Client
 
-## Getting Started
+Next.js 15 frontend for the REX image generation and social art experience.
 
-First, run the development server:
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Fill in `.env.local` using `.env.example` as the source of required variable names.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+pnpm dev        # run Next.js locally on http://localhost:3000
+pnpm typecheck  # run TypeScript without emitting files
+pnpm lint       # run Next linting
+pnpm build      # create a production build
+pnpm start      # run the production build
+```
 
-## Learn More
+## Local Backend
 
-To learn more about Next.js, take a look at the following resources:
+The frontend expects the API at `NEXT_PUBLIC_API_URL`, which defaults to `http://localhost:5001` in `.env.example`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Start the backend from `generator-server` before testing API-backed pages.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Architecture Notes for Agents
 
-## Deploy on Vercel
+- Prefer shared API helpers and hooks over one-off fetch logic.
+- Public social pages belong under public route groups as the repo evolves.
+- Auth-required studio/settings surfaces belong under auth route groups.
+- Do not enforce ownership or prompt visibility as a frontend security control. The backend must send only data the viewer is allowed to see.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Read the root `AGENT.md` before making frontend changes.

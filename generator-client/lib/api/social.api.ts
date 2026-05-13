@@ -1,36 +1,8 @@
 // src/lib/api/social.api.ts
 import { createApiClient } from "./client";
+import type { Comment, PaginatedComments, SocialMeta } from "@/types/social";
 
-export interface SocialMeta {
-  likes?: number;
-  hasLiked?: boolean;
-  followers?: number;
-  following?: number;
-  isFollowing?: boolean;
-}
-
-export interface Comment {
-  id: string;
-  post_id: string;
-  author_profile_id: string;
-  body: string;
-  created_at: string;
-  author?: {
-    username: string;
-    display_name: string;
-    avatar_url: string;
-  };
-}
-
-export interface PaginatedComments {
-  data: Comment[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-    hasNext: boolean;
-  };
-}
+export type { Comment, PaginatedComments, SocialMeta } from "@/types/social";
 
 export const socialApi = (getToken: () => Promise<string | null>) => {
   const client = createApiClient(getToken);
