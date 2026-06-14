@@ -2,6 +2,7 @@
 // Handles DB operations for published posts using the normalized social schema.
 
 import { supabase } from "../config/supabase";
+import { encodeCursor, decodeCursor } from "../utils/cursor";
 
 export interface PostRecord {
   id: string;
@@ -31,10 +32,8 @@ export interface CreatePostPayload {
 export interface ListPostsResult {
   posts: PostRecord[];
   pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    hasNext: boolean;
+    nextCursor: string | null;
+    hasMore: boolean;
   };
 }
 
@@ -79,12 +78,10 @@ export async function findById(id: string): Promise<PostRecord | null> {
 }
 
 export async function listPublic(
-  page: number,
   limit: number,
+  cursor?: string,
   username?: string
 ): Promise<ListPostsResult> {
-  const offset = (page - 1) * limit;
-
   // 1. Resolve author profile ID if username is provided
   let filterProfileId: string | null = null;
   if (username) {
@@ -97,7 +94,7 @@ export async function listPublic(
     if (!profile) {
       return {
         posts: [],
-        pagination: { page, limit, total: 0, hasNext: false },
+        pagination: { nextCursor: null, hasMore: false },
       };
     }
     filterProfileId = profile.id;
@@ -110,31 +107,49 @@ export async function listPublic(
       *,
       asset:generated_assets!inner(image_url, prompt, title),
       author:profiles(username, display_name, avatar_url)
-    `, { count: "exact" });
+    `);
 
   if (filterProfileId) {
     query = query.eq("author_profile_id", filterProfileId);
   }
 
-  const { data: postsData, error, count } = await query
-    .eq("visibility", "public")
-    .range(offset, offset + limit - 1)
-    .order("created_at", { ascending: false });
+  query = query.eq("visibility", "public");
+
+  if (cursor) {
+    const decoded = decodeCursor(cursor);
+    if (decoded) {
+      query = query.or(`created_at.lt.${decoded.createdAt},and(created_at.eq.${decoded.createdAt},id.lt.${decoded.id})`);
+    }
+  }
+
+  const { data: postsData, error } = await query
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(limit + 1);
 
   if (error) {
     throw new Error(`DB error in post listPublic: ${error.message}`);
   }
 
-  const total = count ?? 0;
-  const posts = (postsData ?? []).map((p) => formatPost(p));
+  const rawPosts = postsData || [];
+  const hasMore = rawPosts.length > limit;
+  const slicedPosts = hasMore ? rawPosts.slice(0, limit) : rawPosts;
+  const posts = slicedPosts.map((p) => formatPost(p));
+
+  let nextCursor: string | null = null;
+  if (hasMore && slicedPosts.length > 0) {
+    const lastItem = slicedPosts[slicedPosts.length - 1];
+    nextCursor = encodeCursor({
+      createdAt: lastItem.created_at,
+      id: lastItem.id,
+    });
+  }
 
   return {
     posts,
     pagination: {
-      page,
-      limit,
-      total,
-      hasNext: offset + (postsData?.length ?? 0) < total,
+      nextCursor,
+      hasMore,
     },
   };
 }
@@ -152,10 +167,29 @@ export async function deleteOwned(id: string, profileId: string): Promise<boolea
   return (count ?? 0) > 0;
 }
 
+interface RawPostJoin {
+  id: string;
+  author_profile_id: string;
+  generated_asset_id: string;
+  caption: string | null;
+  visibility: string;
+  created_at: string;
+  asset?: {
+    image_url: string;
+    prompt: string;
+    title: string | null;
+  } | null;
+  author?: {
+    username: string;
+    display_name: string;
+    avatar_url: string;
+  } | null;
+}
+
 /**
  * Helper to flatten the nested Join result into a clean PostRecord.
  */
-function formatPost(raw: any): PostRecord {
+function formatPost(raw: RawPostJoin): PostRecord {
   return {
     id: raw.id,
     author_profile_id: raw.author_profile_id,
@@ -165,7 +199,7 @@ function formatPost(raw: any): PostRecord {
     created_at: raw.created_at,
     image_url: raw.asset?.image_url,
     prompt: raw.asset?.prompt,
-    title: raw.asset?.title,
+    title: raw.asset?.title ?? undefined,
     author: raw.author ? {
       username: raw.author.username,
       display_name: raw.author.display_name,

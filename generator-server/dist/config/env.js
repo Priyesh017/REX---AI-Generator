@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.env = void 0;
-// src/lib/env.ts
+// src/config/env.ts
 const dotenv_1 = __importDefault(require("dotenv"));
 const zod_1 = require("zod");
 // Load .env file before validation
@@ -24,6 +24,7 @@ const envSchema = zod_1.z.object({
     RAZORPAY_KEY_SECRET: zod_1.z.string().min(1),
     RAZORPAY_WEBHOOK_SECRET: zod_1.z.string().min(1),
     ADMIN_ID: zod_1.z.string().optional(),
+    CLIENT_URL: zod_1.z.string().url().default("http://localhost:3000"),
 });
 // Parse and validate environment variables
 const parsed = envSchema.safeParse(process.env);
@@ -44,4 +45,5 @@ exports.env = {
     razorpayKeySecret: raw.RAZORPAY_KEY_SECRET,
     razorpayWebhookSecret: raw.RAZORPAY_WEBHOOK_SECRET,
     adminId: raw.ADMIN_ID,
+    clientUrl: raw.CLIENT_URL,
 };

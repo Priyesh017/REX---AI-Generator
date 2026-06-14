@@ -50,13 +50,13 @@ export default function DraftsPanel() {
     refetch
   } = useInfiniteQuery({
     queryKey: ['drafts'],
-    queryFn: async ({ pageParam = 1 }) => {
+    queryFn: async ({ pageParam }) => {
       const api = studioApi(getToken);
-      return api.listDrafts(pageParam, 12);
+      return api.listDrafts(pageParam as string | undefined, 12);
     },
-    initialPageParam: 1,
+    initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => {
-      return lastPage.meta.pagination.hasNext ? lastPage.meta.pagination.page + 1 : undefined;
+      return lastPage.meta.pagination.nextCursor ?? undefined;
     },
   });
 
@@ -311,15 +311,27 @@ function DraftCard({
       className={`group relative aspect-square rounded-2xl overflow-hidden border border-zinc-800/60 bg-zinc-900 hover:border-zinc-700 transition-all duration-200 ${isDeleting ? "opacity-40 pointer-events-none" : ""}`}
     >
       {/* Thumbnail */}
-      <Image
-        src={asset.image_url}
-        alt={asset.title ?? asset.prompt}
-        fill
-        unoptimized
-        sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
-        className="object-cover cursor-pointer transition-transform duration-300 group-hover:scale-[1.03]"
-        onClick={onPreview}
-      />
+      {asset.generation_status === 'pending' || !asset.image_url ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 text-zinc-500 gap-2">
+          <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+          <span className="text-[10px] text-zinc-600 font-medium">Generating...</span>
+        </div>
+      ) : asset.generation_status === 'failed' ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 text-red-500/70 gap-2 p-3">
+          <ImageOff className="w-6 h-6 text-red-500/50" />
+          <span className="text-[10px] text-zinc-600 text-center font-medium">Generation Failed</span>
+        </div>
+      ) : (
+        <Image
+          src={asset.image_url}
+          alt={asset.title ?? asset.prompt}
+          fill
+          unoptimized
+          sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
+          className="object-cover cursor-pointer transition-transform duration-300 group-hover:scale-[1.03]"
+          onClick={onPreview}
+        />
+      )}
 
       {/* Hover overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-between p-3 pointer-events-none group-hover:pointer-events-auto">
@@ -335,25 +347,31 @@ function DraftCard({
               align="end"
               className="w-44 bg-zinc-900/95 border-zinc-700/80 backdrop-blur-xl text-sm rounded-xl shadow-xl"
             >
-              <DropdownMenuItem
-                onClick={onPublish}
-                className="gap-2 text-indigo-400 focus:text-indigo-300 focus:bg-indigo-900/30 rounded-lg cursor-pointer"
-              >
-                <Send className="w-3.5 h-3.5" /> Publish
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-zinc-700/60 my-1" />
+              {asset.generation_status === 'completed' && (
+                <>
+                  <DropdownMenuItem
+                    onClick={onPublish}
+                    className="gap-2 text-indigo-400 focus:text-indigo-300 focus:bg-indigo-900/30 rounded-lg cursor-pointer"
+                  >
+                    <Send className="w-3.5 h-3.5" /> Publish
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-zinc-700/60 my-1" />
+                </>
+              )}
               <DropdownMenuItem
                 onClick={onCopyPrompt}
                 className="gap-2 text-zinc-300 focus:text-white focus:bg-zinc-800 rounded-lg cursor-pointer"
               >
                 <Copy className="w-3.5 h-3.5" /> Copy Prompt
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={onDownload}
-                className="gap-2 text-zinc-300 focus:text-white focus:bg-zinc-800 rounded-lg cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" /> Download
-              </DropdownMenuItem>
+              {asset.generation_status === 'completed' && (
+                <DropdownMenuItem
+                  onClick={onDownload}
+                  className="gap-2 text-zinc-300 focus:text-white focus:bg-zinc-800 rounded-lg cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" /> Download
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator className="bg-zinc-700/60 my-1" />
               <DropdownMenuItem
                 onClick={onDelete}
@@ -371,7 +389,10 @@ function DraftCard({
         </div>
 
         {/* Bottom — prompt preview */}
-        <div className="cursor-pointer" onClick={onPreview}>
+        <div 
+          className={asset.generation_status === 'completed' ? "cursor-pointer" : ""} 
+          onClick={asset.generation_status === 'completed' ? onPreview : undefined}
+        >
           <p className="text-[11px] text-zinc-300 line-clamp-2 leading-relaxed">
             {asset.prompt || asset.title || "No prompt"}
           </p>

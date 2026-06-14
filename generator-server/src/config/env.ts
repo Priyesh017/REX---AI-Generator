@@ -1,4 +1,4 @@
-// src/lib/env.ts
+// src/config/env.ts
 import dotenv from "dotenv";
 import { z } from "zod";
 
@@ -20,6 +20,7 @@ const envSchema = z.object({
   RAZORPAY_KEY_SECRET: z.string().min(1),
   RAZORPAY_WEBHOOK_SECRET: z.string().min(1),
   ADMIN_ID: z.string().optional(),
+  CLIENT_URL: z.string().url().default("http://localhost:3000"),
 });
 
 // Parse and validate environment variables
@@ -47,4 +48,5 @@ export const env = {
   razorpayKeySecret: raw.RAZORPAY_KEY_SECRET,
   razorpayWebhookSecret: raw.RAZORPAY_WEBHOOK_SECRET,
   adminId: raw.ADMIN_ID,
+  clientUrl: raw.CLIENT_URL,
 };

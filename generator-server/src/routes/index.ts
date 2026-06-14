@@ -21,6 +21,7 @@ import profileRouter from "./profile.routes";
 import studioRouter from "./studio.routes";
 import postRouter from "./post.routes";
 import socialRouter from "./social.routes";
+import notificationRouter from "./notification.routes";
 
 // Legacy controllers (preserved — do not break existing flows)
 import { getSubscriptionPlans } from "../controllers/getPlans";
@@ -40,6 +41,10 @@ import { validate } from "../middleware/validate";
 import { generateSchema, listDraftsQuerySchema, draftIdParamSchema } from "../validation/draft.validation";
 import { generate, listDrafts, deleteDraft } from "../controllers/draft.controller";
 import { getMyProfile } from "../controllers/profile.controller";
+import { createOrderSchema, paymentSuccessSchema } from "../validation/payment.validation";
+import { adminUsersQuerySchema, adminPaginationQuerySchema, adminUpdateUserSchema } from "../validation/admin.validation";
+import { banUser } from "../controllers/moderation.controller";
+import { banUserPayloadSchema } from "../validation/moderation.validation";
 
 const router = Router();
 
@@ -51,19 +56,21 @@ router.use("/profile", profileRouter);
 router.use("/studio", studioRouter);
 router.use("/posts", postRouter);
 router.use("/social", socialRouter);
+router.use("/notifications", notificationRouter);
 
-// ── Billing (unchanged) ───────────────────────────────────────────────────────
+// ── Billing (validation added) ───────────────────────────────────────────────────────
 router.get("/plans", catchAsync(getSubscriptionPlans));
-router.post("/create-order", requireAuth, catchAsync(createOrder));
-router.post("/payment-success", requireAuth, catchAsync(paymentSuccess));
+router.post("/create-order", requireAuth, validate(createOrderSchema, "body"), catchAsync(createOrder));
+router.post("/payment-success", requireAuth, validate(paymentSuccessSchema, "body"), catchAsync(paymentSuccess));
 router.post("/payment-webhook", catchAsync(paymentWebhook));
 
-// ── Admin (unchanged) ─────────────────────────────────────────────────────────
+// ── Admin (validation added) ─────────────────────────────────────────────────────────
 router.get("/admin/stats", requireAuth, requireAdmin, catchAsync(getAdminStats));
-router.get("/admin/users", requireAuth, requireAdmin, catchAsync(getAdminUsers));
-router.get("/admin/transactions", requireAuth, requireAdmin, catchAsync(getAdminTransactions));
-router.get("/admin/images", requireAuth, requireAdmin, catchAsync(getAdminImages));
-router.post("/admin/update-user", requireAuth, requireAdmin, catchAsync(updateUserDetails));
+router.get("/admin/users", requireAuth, requireAdmin, validate(adminUsersQuerySchema, "query"), catchAsync(getAdminUsers));
+router.get("/admin/transactions", requireAuth, requireAdmin, validate(adminPaginationQuerySchema, "query"), catchAsync(getAdminTransactions));
+router.get("/admin/images", requireAuth, requireAdmin, validate(adminPaginationQuerySchema, "query"), catchAsync(getAdminImages));
+router.post("/admin/update-user", requireAuth, requireAdmin, validate(adminUpdateUserSchema, "body"), catchAsync(updateUserDetails));
+router.post("/admin/users/:userId/ban", requireAuth, requireAdmin, validate(banUserPayloadSchema, "body"), catchAsync(banUser));
 
 // ── Backward compatibility aliases ────────────────────────────────────────────
 // These keep existing frontend clients working without changes.

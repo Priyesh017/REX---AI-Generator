@@ -8,10 +8,10 @@ export const postApi = (getToken: () => Promise<string | null>) => {
 
   return {
     /** List public posts for the feed or a specific user */
-    list: async (params: { username?: string; page?: number; limit?: number }): Promise<ListPostsResponse> => {
+    list: async (params: { username?: string; cursor?: string; limit?: number }): Promise<ListPostsResponse> => {
       const searchParams = new URLSearchParams();
       if (params.username) searchParams.append("username", params.username);
-      if (params.page) searchParams.append("page", params.page.toString());
+      if (params.cursor) searchParams.append("cursor", params.cursor);
       if (params.limit) searchParams.append("limit", params.limit.toString());
 
       return client.get<{ data: Post[]; meta: ListPostsResponse["meta"] }>(`/posts?${searchParams.toString()}`)
@@ -39,6 +39,11 @@ export const postApi = (getToken: () => Promise<string | null>) => {
     /** Delete a post */
     delete: async (id: string) => {
       return client.delete(`/posts/${id}`);
+    },
+
+    /** Report a post */
+    report: async (id: string, reason: string) => {
+      return client.post(`/posts/${id}/report`, { reason });
     },
   };
 };

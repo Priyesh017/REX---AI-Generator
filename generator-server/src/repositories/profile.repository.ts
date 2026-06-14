@@ -16,6 +16,7 @@ export interface UserRecord {
   credits: number;
   current_plan: string;
   subscription_status: string | null;
+  role: "user" | "moderator" | "admin" | "banned";
   created_at: string;
 }
 
@@ -46,7 +47,7 @@ export async function findByClerkId(
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "id, clerk_id, username, display_name, bio, avatar_url, credits, current_plan, subscription_status, created_at"
+      "id, clerk_id, username, display_name, bio, avatar_url, credits, current_plan, subscription_status, role, created_at"
     )
     .eq("clerk_id", clerkId)
     .single();
@@ -69,7 +70,7 @@ export async function findByUsername(
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "id, clerk_id, username, display_name, bio, avatar_url, credits, current_plan, subscription_status, created_at"
+      "id, clerk_id, username, display_name, bio, avatar_url, credits, current_plan, subscription_status, role, created_at"
     )
     .eq("username", username)
     .single();
@@ -99,10 +100,11 @@ export async function create(
         avatar_url: payload.avatarUrl ?? null,
         credits: 5,
         current_plan: "free",
+        role: "user",
       },
     ])
     .select(
-      "id, clerk_id, username, display_name, bio, avatar_url, credits, current_plan, subscription_status, created_at"
+      "id, clerk_id, username, display_name, bio, avatar_url, credits, current_plan, subscription_status, role, created_at"
     )
     .single();
 

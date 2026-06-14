@@ -2,6 +2,7 @@
 // Owns ALL database access for draft assets (the "generated_assets" table).
 
 import { supabase } from "../config/supabase";
+import { encodeCursor, decodeCursor } from "../utils/cursor";
 
 export interface DraftAsset {
   id: string;
@@ -26,10 +27,8 @@ export interface CreateDraftPayload {
 export interface DraftListResult {
   assets: DraftAsset[];
   pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    hasNext: boolean;
+    nextCursor: string | null;
+    hasMore: boolean;
   };
 }
 
@@ -39,8 +38,8 @@ export interface DraftListResult {
  */
 export async function listByClerkId(
   clerkId: string,
-  page: number,
-  limit: number
+  limit: number,
+  cursor?: string
 ): Promise<DraftListResult> {
   // 1. Resolve internal profile ID first
   const { data: profile, error: profileError } = await supabase
@@ -52,35 +51,50 @@ export async function listByClerkId(
   if (profileError || !profile) {
     return {
       assets: [],
-      pagination: { page, limit, total: 0, hasNext: false },
+      pagination: { nextCursor: null, hasMore: false },
     };
   }
 
-  const offset = (page - 1) * limit;
-
   // 2. Query assets by owner_profile_id directly
-  const { data, error, count } = await supabase
+  let query = supabase
     .from("generated_assets")
-    .select("*", {
-      count: "exact",
-    })
-    .eq("owner_profile_id", profile.id)
-    .range(offset, offset + limit - 1)
-    .order("created_at", { ascending: false });
+    .select("*")
+    .eq("owner_profile_id", profile.id);
+
+  if (cursor) {
+    const decoded = decodeCursor(cursor);
+    if (decoded) {
+      query = query.or(`created_at.lt.${decoded.createdAt},and(created_at.eq.${decoded.createdAt},id.lt.${decoded.id})`);
+    }
+  }
+
+  const { data, error } = await query
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(limit + 1);
 
   if (error) {
     throw new Error(`DB error in listByClerkId: ${error.message}`);
   }
 
-  const total = count ?? 0;
+  const rawAssets = data || [];
+  const hasMore = rawAssets.length > limit;
+  const slicedAssets = hasMore ? rawAssets.slice(0, limit) : rawAssets;
+
+  let nextCursor: string | null = null;
+  if (hasMore && slicedAssets.length > 0) {
+    const lastItem = slicedAssets[slicedAssets.length - 1];
+    nextCursor = encodeCursor({
+      createdAt: lastItem.created_at,
+      id: lastItem.id,
+    });
+  }
 
   return {
-    assets: (data ?? []) as DraftAsset[],
+    assets: slicedAssets as DraftAsset[],
     pagination: {
-      page,
-      limit,
-      total,
-      hasNext: offset + (data?.length ?? 0) < total,
+      nextCursor,
+      hasMore,
     },
   };
 }

@@ -3,6 +3,7 @@ import * as postRepo from "../repositories/post.repository";
 import * as draftRepo from "../repositories/draft.repository";
 import * as profileRepo from "../repositories/profile.repository";
 import { AppError, NotFoundError, ForbiddenError } from "../lib/errors";
+import { containsRestrictedContent } from "../utils/moderation";
 
 export async function createPostFromDraft(
   clerkId: string,
@@ -25,11 +26,10 @@ export async function createPostFromDraft(
   }
 
   // 3. Simple Moderation Check
-  const restrictedWords = ["nsfw", "gore", "violence", "hate", "spam"];
   const finalTitle = title || draft.title || "";
-  const contentToCheck = `${finalTitle} ${caption || ""} ${draft.prompt || ""}`.toLowerCase();
+  const contentToCheck = `${finalTitle} ${caption || ""} ${draft.prompt || ""}`;
   
-  if (restrictedWords.some(word => contentToCheck.includes(word))) {
+  if (containsRestrictedContent(contentToCheck)) {
     throw new AppError("Content flagged by moderation filters. Publishing denied.", 400, "BAD_REQUEST");
   }
 
@@ -57,8 +57,8 @@ export async function getPost(id: string) {
   return post;
 }
 
-export async function listPosts(page: number, limit: number, username?: string) {
-  return postRepo.listPublic(page, limit, username);
+export async function listPosts(limit: number, cursor?: string, username?: string) {
+  return postRepo.listPublic(limit, cursor, username);
 }
 
 export async function deletePost(clerkId: string, id: string) {

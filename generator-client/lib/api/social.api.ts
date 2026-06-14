@@ -33,12 +33,19 @@ export const socialApi = (getToken: () => Promise<string | null>) => {
       const res = await client.post<{ data: Comment }>(`/social/posts/${postId}/comments`, { body, parentCommentId });
       return res.data;
     },
-    listComments: async (postId: string, page = 1, limit = 20) => {
-      const res = await client.get<PaginatedComments>(`/social/posts/${postId}/comments?page=${page}&limit=${limit}`);
-      return res; 
+    listComments: async (postId: string, cursor?: string, limit = 20) => {
+      const url = cursor
+        ? `/social/posts/${postId}/comments?cursor=${encodeURIComponent(cursor)}&limit=${limit}`
+        : `/social/posts/${postId}/comments?limit=${limit}`;
+      const res = await client.get<PaginatedComments>(url);
+      return res;
     },
     deleteComment: async (commentId: string) => {
       const res = await client.delete<{ data: { success: boolean } }>(`/social/comments/${commentId}`);
+      return res.data;
+    },
+    reportComment: async (commentId: string, reason: string) => {
+      const res = await client.post<{ data: { success: boolean } }>(`/social/comments/${commentId}/report`, { reason });
       return res.data;
     }
   };

@@ -1,19 +1,17 @@
 import { Request, Response, NextFunction } from "express";
-import { env } from "../config/env";
 import { logger } from "../utils/logger";
 
 export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
-  const userId = req.userId;
-  const adminId = env.adminId;
+  const userRole = req.userRole;
 
   logger.info({ 
-    currentUser: userId, 
-    requiredAdmin: adminId,
-    matches: userId === adminId 
+    currentUser: req.profileId, 
+    currentRole: userRole,
+    isAdmin: userRole === "admin" 
   }, "🔒 Admin Check:");
 
-  if (!userId || userId !== adminId) {
-    logger.warn(`🚫 Unauthorized admin access attempt by: ${userId}`);
+  if (!userRole || userRole !== "admin") {
+    logger.warn(`🚫 Unauthorized admin access attempt by profile: ${req.profileId} with role: ${userRole}`);
     return res.status(403).json({ 
       success: false, 
       error: "Forbidden: You do not have admin privileges." 

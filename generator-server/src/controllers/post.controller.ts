@@ -26,8 +26,8 @@ export async function getPost(req: Request, res: Response, next: NextFunction): 
 
 export async function listPosts(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { page, limit, username } = req.query as unknown as ListPostsQuery;
-    const result = await postService.listPosts(page, limit, username);
+    const { cursor, limit, username } = req.query as unknown as ListPostsQuery;
+    const result = await postService.listPosts(limit, cursor, username);
     sendSuccess(res, result.posts, 200, { pagination: result.pagination });
   } catch (err) {
     next(err);

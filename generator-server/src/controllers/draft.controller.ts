@@ -35,8 +35,8 @@ export async function listDrafts(
   next: NextFunction
 ): Promise<void> {
   try {
-    const { page, limit } = req.query as unknown as ListDraftsQuery;
-    const result = await draftService.listDrafts(req.userId!, page, limit);
+    const { cursor, limit } = req.query as unknown as ListDraftsQuery;
+    const result = await draftService.listDrafts(req.userId!, limit, cursor);
     sendSuccess(res, result.assets, 200, { pagination: result.pagination });
   } catch (err) {
     next(err);

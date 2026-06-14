@@ -14,6 +14,9 @@ import {
   listPostsQuerySchema,
   postIdParamSchema,
 } from "../validation/post.validation";
+import { reportPost, moderatePost } from "../controllers/moderation.controller";
+import { reportContentSchema, moderateContentSchema } from "../validation/moderation.validation";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const router = Router();
 
@@ -34,6 +37,25 @@ router.delete(
   requireAuth,
   validate(postIdParamSchema, "params"),
   catchAsync(deletePost)
+);
+
+// Report post (auth required)
+router.post(
+  "/:id/report",
+  requireAuth,
+  validate(postIdParamSchema, "params"),
+  validate(reportContentSchema, "body"),
+  catchAsync(reportPost)
+);
+
+// Moderate post (admin required)
+router.post(
+  "/:id/moderate",
+  requireAuth,
+  requireAdmin,
+  validate(postIdParamSchema, "params"),
+  validate(moderateContentSchema, "body"),
+  catchAsync(moderatePost)
 );
 
 export default router;

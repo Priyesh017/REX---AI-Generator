@@ -20,5 +20,7 @@ export interface Comment {
 
 export interface PaginatedComments {
   data: Comment[];
-  meta: PaginationMeta;
+  meta: {
+    pagination: PaginationMeta;
+  };
 }

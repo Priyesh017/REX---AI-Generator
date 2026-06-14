@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateTitleFromPrompt = void 0;
-// src/utils/title-generator.ts
-const generateTitleFromPrompt = (prompt) => {
+// src/lib/titleGenerator.ts
+const generateTitleFromPrompt = async (prompt) => {
     const cleaned = prompt
         .replace(/[^a-zA-Z0-9 ]/g, "") // remove special characters
         .split(" ")

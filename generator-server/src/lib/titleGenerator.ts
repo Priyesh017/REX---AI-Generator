@@ -1,5 +1,5 @@
-// src/utils/title-generator.ts
-export const generateTitleFromPrompt = (prompt: string): string => {
+// src/lib/titleGenerator.ts
+export const generateTitleFromPrompt = async (prompt: string): Promise<string> => {
   const cleaned = prompt
     .replace(/[^a-zA-Z0-9 ]/g, "") // remove special characters
     .split(" ")

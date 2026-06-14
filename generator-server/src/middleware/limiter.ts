@@ -12,10 +12,11 @@ export const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Stricter limiter for image generation (protects your Hugging Face credits)
+// Stricter limiter for image generation (protects Hugging Face credits)
 export const generationLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 20, // Limit each IP to 20 generations per hour
+  max: 10, // Limit each user to 10 generations per hour (spec requirement)
+  keyGenerator: (req) => req.userId || req.ip || "",
   message: {
     error: "Generation limit reached. Please try again in an hour.",
   },
@@ -28,6 +29,7 @@ export const generationSpeedLimiter = slowDown({
   windowMs: 15 * 60 * 1000, // 15 minutes
   delayAfter: 5, // Allow 5 requests per 15 minutes, then...
   delayMs: (hits) => (hits - 5) * 1000, // Add 1s delay per request over 5
+  keyGenerator: (req) => req.userId || req.ip || "",
 });
 
 // Soft throttling for comments to deter spam bots
@@ -35,4 +37,5 @@ export const commentSpeedLimiter = slowDown({
   windowMs: 5 * 60 * 1000, // 5 minutes
   delayAfter: 3, // Allow 3 requests per 5 minutes, then...
   delayMs: (hits) => (hits - 3) * 500, // Add 500ms delay per request over 3
+  keyGenerator: (req) => req.userId || req.ip || "",
 });

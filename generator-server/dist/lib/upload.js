@@ -3,8 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.uploadImageToBucket = void 0;
 const supabase_1 = require("../config/supabase");
 const crypto_1 = require("crypto");
-const uploadImageToBucket = async (imageBuffer, contentType = "image/png") => {
-    const fileName = `${(0, crypto_1.randomUUID)()}.png`;
+const uploadImageToBucket = async (imageBuffer, contentType = "image/webp") => {
+    const ext = contentType.split("/")[1] || "webp";
+    const fileName = `${(0, crypto_1.randomUUID)()}.${ext}`;
     // Upload to Supabase Storage
     const { error: uploadError } = await supabase_1.supabase.storage
         .from("generated-images")

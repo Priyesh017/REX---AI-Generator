@@ -9,9 +9,13 @@ import {
   postIdParamSchema, 
   commentIdParamSchema, 
   targetUsernameParamSchema, 
+  usernameParamSchema,
   createCommentSchema, 
   paginationQuerySchema 
 } from "../validation/social.validation";
+import { reportComment, moderateComment } from "../controllers/moderation.controller";
+import { reportContentSchema, moderateContentSchema } from "../validation/moderation.validation";
+import { requireAdmin } from "../middleware/adminAuth";
 
 const router = Router();
 
@@ -46,7 +50,7 @@ router.post(
 router.get(
   "/users/:username/followers",
   optionalAuth,
-  validate(targetUsernameParamSchema, "params"),
+  validate(usernameParamSchema, "params"),
   catchAsync(socialController.getProfileSocialMeta)
 );
 
@@ -76,6 +80,25 @@ router.delete(
   requireAuth,
   validate(commentIdParamSchema, "params"),
   catchAsync(socialController.deleteComment)
+);
+
+// Report comment (auth required)
+router.post(
+  "/comments/:commentId/report",
+  requireAuth,
+  validate(commentIdParamSchema, "params"),
+  validate(reportContentSchema, "body"),
+  catchAsync(reportComment)
+);
+
+// Moderate comment (admin required)
+router.post(
+  "/comments/:commentId/moderate",
+  requireAuth,
+  requireAdmin,
+  validate(commentIdParamSchema, "params"),
+  validate(moderateContentSchema, "body"),
+  catchAsync(moderateComment)
 );
 
 export default router;

@@ -3,9 +3,10 @@ import { randomUUID } from "crypto";
 
 export const uploadImageToBucket = async (
   imageBuffer: Buffer,
-  contentType = "image/png"
+  contentType = "image/webp"
 ): Promise<string> => {
-  const fileName = `${randomUUID()}.png`;
+  const ext = contentType.split("/")[1] || "webp";
+  const fileName = `${randomUUID()}.${ext}`;
 
   // Upload to Supabase Storage
   const { error: uploadError } = await supabase.storage

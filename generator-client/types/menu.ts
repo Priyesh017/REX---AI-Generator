@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
+
 export interface MenuItem {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   href: string;
   gradient: string;

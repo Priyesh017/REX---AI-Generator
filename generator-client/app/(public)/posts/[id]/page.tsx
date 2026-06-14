@@ -22,13 +22,11 @@ export default async function PostRoute({ params }: Props) {
   
   let initialPost = null;
   let initialSocialStats = null;
-  let initialComments = [];
 
   try {
-    const [postRes, metaRes, commentsRes] = await Promise.all([
+    const [postRes, metaRes] = await Promise.all([
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/posts/${id}`, { next: { revalidate: 60 } }),
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/social/posts/${id}/likes`, { next: { revalidate: 60 } }),
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/social/posts/${id}/comments`, { next: { revalidate: 60 } })
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/social/posts/${id}/likes`, { next: { revalidate: 60 } })
     ]);
 
     if (postRes.ok) {
@@ -38,10 +36,6 @@ export default async function PostRoute({ params }: Props) {
     if (metaRes.ok) {
       const json = await metaRes.json();
       initialSocialStats = json.data || null;
-    }
-    if (commentsRes.ok) {
-      const json = await commentsRes.json();
-      initialComments = json.data || [];
     }
   } catch (err) {
     console.error("Failed to fetch SSR post data:", err);
@@ -53,7 +47,6 @@ export default async function PostRoute({ params }: Props) {
         postId={id} 
         initialPost={initialPost}
         initialSocialStats={initialSocialStats}
-        initialComments={initialComments}
       />
     </AppShell>
   );

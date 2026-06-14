@@ -1,5 +1,5 @@
-// src/repositories/social.repository.ts
 import { supabase } from "../config/supabase";
+import { encodeCursor, decodeCursor } from "../utils/cursor";
 
 // --- LIKES ---
 
@@ -126,28 +126,49 @@ export async function createComment(payload: CreateCommentPayload) {
   return data;
 }
 
-export async function listComments(postId: string, page: number, limit: number) {
-  const offset = (page - 1) * limit;
-  const { data, error, count } = await supabase
+export async function listComments(postId: string, limit: number, cursor?: string) {
+  let query = supabase
     .from("comments")
     .select(`
       *,
       author:profiles(username, display_name, avatar_url)
-    `, { count: "exact" })
+    `)
     .eq("post_id", postId)
-    .eq("status", "visible")
+    .eq("status", "visible");
+
+  if (cursor) {
+    const decoded = decodeCursor(cursor);
+    if (decoded) {
+      // Ascending keyset condition: created_at > cursor.createdAt or (created_at = cursor.createdAt and id > cursor.id)
+      query = query.or(`created_at.gt.${decoded.createdAt},and(created_at.eq.${decoded.createdAt},id.gt.${decoded.id})`);
+    }
+  }
+
+  const { data, error } = await query
     .order("created_at", { ascending: true })
-    .range(offset, offset + limit - 1);
+    .order("id", { ascending: true })
+    .limit(limit + 1);
 
   if (error) throw new Error(`DB error in listComments: ${error.message}`);
 
+  const rawComments = data || [];
+  const hasMore = rawComments.length > limit;
+  const slicedComments = hasMore ? rawComments.slice(0, limit) : rawComments;
+
+  let nextCursor: string | null = null;
+  if (hasMore && slicedComments.length > 0) {
+    const lastItem = slicedComments[slicedComments.length - 1];
+    nextCursor = encodeCursor({
+      createdAt: lastItem.created_at,
+      id: lastItem.id,
+    });
+  }
+
   return {
-    comments: data ?? [],
+    comments: slicedComments,
     pagination: {
-      page,
-      limit,
-      total: count ?? 0,
-      hasNext: offset + (data?.length ?? 0) < (count ?? 0)
+      nextCursor,
+      hasMore,
     }
   };
 }

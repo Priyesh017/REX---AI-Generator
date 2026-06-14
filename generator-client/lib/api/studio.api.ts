@@ -17,12 +17,14 @@ export function studioApi(getToken: () => Promise<string | null>) {
         .then((r) => r.data),
 
     /** GET /studio/drafts — list current user's draft assets */
-    listDrafts: (page = 1, limit = 12) =>
-      client
-        .get<{ data: DraftAsset[]; meta: DraftListMeta }>(
-          `/studio/drafts?page=${page}&limit=${limit}`
-        )
-        .then((r) => ({ assets: r.data, meta: r.meta })),
+    listDrafts: (cursor?: string, limit = 12) => {
+      const url = cursor
+        ? `/studio/drafts?cursor=${encodeURIComponent(cursor)}&limit=${limit}`
+        : `/studio/drafts?limit=${limit}`;
+      return client
+        .get<{ data: DraftAsset[]; meta: DraftListMeta }>(url)
+        .then((r) => ({ assets: r.data, meta: r.meta }));
+    },
 
     /** GET /studio/drafts/:id — get a specific draft asset */
     getDraft: (id: string) =>

@@ -3,6 +3,8 @@ import * as socialRepo from "../repositories/social.repository";
 import * as profileRepo from "../repositories/profile.repository";
 import * as postRepo from "../repositories/post.repository";
 import { AppError, NotFoundError, ForbiddenError } from "../lib/errors";
+import { containsRestrictedContent } from "../utils/moderation";
+import * as notificationService from "./notification.service";
 
 // --- LIKES ---
 
@@ -20,6 +22,14 @@ export async function toggleLike(clerkId: string, postId: string) {
     return { liked: false };
   } else {
     await socialRepo.likePost(postId, profile.id);
+    if (post.author_profile_id !== profile.id) {
+      await notificationService.createNotification({
+        recipientProfileId: post.author_profile_id,
+        senderProfileId: profile.id,
+        type: "like",
+        postId: postId,
+      });
+    }
     return { liked: true };
   }
 }
@@ -59,6 +69,11 @@ export async function toggleFollow(clerkId: string, targetUsername: string) {
     return { following: false };
   } else {
     await socialRepo.followUser(followerProfile.id, targetProfile.id);
+    await notificationService.createNotification({
+      recipientProfileId: targetProfile.id,
+      senderProfileId: followerProfile.id,
+      type: "follow",
+    });
     return { following: true };
   }
 }
@@ -91,9 +106,7 @@ export async function addComment(clerkId: string, postId: string, body: string, 
   if (!post) throw new NotFoundError("Post not found");
 
   // Basic moderation
-  const restrictedWords = ["nsfw", "gore", "violence", "hate", "spam"];
-  const contentToCheck = body.toLowerCase();
-  if (restrictedWords.some(word => contentToCheck.includes(word))) {
+  if (containsRestrictedContent(body)) {
     throw new AppError("Content flagged by moderation filters.", 400, "BAD_REQUEST");
   }
 
@@ -104,14 +117,24 @@ export async function addComment(clerkId: string, postId: string, body: string, 
     parentCommentId
   });
 
+  if (post.author_profile_id !== profile.id) {
+    await notificationService.createNotification({
+      recipientProfileId: post.author_profile_id,
+      senderProfileId: profile.id,
+      type: "comment",
+      postId: postId,
+      commentId: comment.id,
+    });
+  }
+
   return comment;
 }
 
-export async function getComments(postId: string, page: number, limit: number) {
+export async function getComments(postId: string, limit: number, cursor?: string) {
   const post = await postRepo.findById(postId);
   if (!post) throw new NotFoundError("Post not found");
 
-  return socialRepo.listComments(postId, page, limit);
+  return socialRepo.listComments(postId, limit, cursor);
 }
 
 export async function deleteComment(clerkId: string, commentId: string) {

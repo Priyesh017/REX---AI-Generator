@@ -87,10 +87,10 @@ export async function generateDraft(
  */
 export async function listDrafts(
   clerkId: string,
-  page: number,
-  limit: number
+  limit: number,
+  cursor?: string
 ) {
-  return draftRepo.listByClerkId(clerkId, page, limit);
+  return draftRepo.listByClerkId(clerkId, limit, cursor);
 }
 
 /**

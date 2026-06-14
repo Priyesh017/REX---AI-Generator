@@ -10,8 +10,12 @@ declare global {
     interface Request {
       /** Clerk user ID — from verified JWT. Use only for auth/profile lookup. */
       userId?: string;
+      /** Internal profile UUID relational key. */
+      profileId?: string;
       /** Internal profile role — resolved after requireAuth. */
-      userRole?: "user" | "moderator" | "admin";
+      userRole?: "user" | "moderator" | "admin" | "banned";
+      /** Raw request body — buffer used for webhook signature verification. */
+      rawBody?: Buffer;
     }
   }
 }

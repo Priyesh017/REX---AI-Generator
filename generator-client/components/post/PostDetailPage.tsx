@@ -4,7 +4,6 @@ import { useAuth } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import {
   Calendar,
-  User,
   Copy,
   Download,
   Share2,
@@ -14,19 +13,22 @@ import {
   ExternalLink,
   Heart,
   MessageCircle,
-  Send
+  Send,
+  AlertTriangle,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 import toast from "react-hot-toast";
 import { postApi, type Post } from "@/lib/api/post.api";
-import { socialApi, type SocialMeta, type Comment } from "@/lib/api/social.api";
+import { socialApi, type SocialMeta } from "@/lib/api/social.api";
 import { ApiRequestError } from "@/lib/api/client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import ReportModal from "../shared/ReportModal";
 
 const commentSchema = z.object({
   body: z.string().min(1, "Comment cannot be empty").max(1000, "Comment is too long"),
@@ -37,43 +39,61 @@ export default function PostDetailPage({
   postId, 
   initialPost = null, 
   initialSocialStats = null, 
-  initialComments = [] 
 }: { 
   postId: string;
   initialPost?: Post | null;
   initialSocialStats?: SocialMeta | null;
-  initialComments?: Comment[];
 }) {
   const { getToken, userId } = useAuth();
   const queryClient = useQueryClient();
+  const [reportTarget, setReportTarget] = useState<{ type: "post" | "comment"; id: string } | null>(null);
 
-  const { data, isLoading: loading, error } = useQuery({
+  // 1. Post details query hook
+  const { data: post, isLoading: postLoading, error: postError } = useQuery({
     queryKey: ['post', postId],
     queryFn: async () => {
       const pApi = postApi(getToken);
-      const sApi = socialApi(getToken);
-      const [postData, metaData, commentsData] = await Promise.all([
-        pApi.get(postId),
-        sApi.getPostMeta(postId),
-        sApi.listComments(postId)
-      ]);
-      return { 
-        post: postData.post, 
-        socialStats: metaData, 
-        comments: commentsData.data || [] 
-      };
+      const res = await pApi.get(postId);
+      return res.post;
     },
-    initialData: initialPost && initialSocialStats ? {
-      post: initialPost,
-      socialStats: initialSocialStats,
-      comments: initialComments
-    } : undefined,
+    initialData: initialPost || undefined,
   });
 
-  const post = data?.post;
-  const socialStats = data?.socialStats || { likes: 0, hasLiked: false };
-  const comments = data?.comments || [];
+  // 2. Social stats query hook
+  const { data: socialStats = { likes: 0, hasLiked: false } } = useQuery({
+    queryKey: ['postSocialMeta', postId],
+    queryFn: async () => {
+      const sApi = socialApi(getToken);
+      return sApi.getPostMeta(postId);
+    },
+    initialData: initialSocialStats || undefined,
+  });
 
+  // 3. Comments infinite cursor query hook
+  const {
+    data: commentsData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: commentsLoading,
+  } = useInfiniteQuery({
+    queryKey: ['comments', postId],
+    queryFn: async ({ pageParam }) => {
+      const sApi = socialApi(getToken);
+      const res = await sApi.listComments(postId, pageParam as string | undefined, 10);
+      return res;
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => {
+      return lastPage.meta.pagination.nextCursor ?? undefined;
+    },
+  });
+
+  const comments = commentsData?.pages.flatMap((page) => page.data) || [];
+  const commentsMeta = commentsData?.pages[0]?.meta?.pagination;
+  const totalComments = commentsMeta?.total ?? 0;
+
+  // Toggle Like Mutation
   const toggleLikeMutation = useMutation({
     mutationFn: async () => socialApi(getToken).toggleLike(postId),
     onMutate: async () => {
@@ -81,33 +101,31 @@ export default function PostDetailPage({
         toast.error("Please sign in to like posts");
         throw new Error("Unauthorized");
       }
-      await queryClient.cancelQueries({ queryKey: ['post', postId] });
-      const previousData = queryClient.getQueryData<{post: Post, socialStats: SocialMeta, comments: Comment[]}>(['post', postId]);
-      queryClient.setQueryData(['post', postId], (old: {post: Post, socialStats: SocialMeta, comments: Comment[]} | undefined) => {
+      await queryClient.cancelQueries({ queryKey: ['postSocialMeta', postId] });
+      const previousData = queryClient.getQueryData<SocialMeta>(['postSocialMeta', postId]);
+      queryClient.setQueryData(['postSocialMeta', postId], (old: SocialMeta | undefined) => {
         if (!old) return old;
-        const hasLiked = !old.socialStats.hasLiked;
+        const hasLiked = !old.hasLiked;
         return {
           ...old,
-          socialStats: {
-            ...old.socialStats,
-            hasLiked,
-            likes: Math.max(0, (old.socialStats.likes ?? 0) + (hasLiked ? 1 : -1))
-          }
+          hasLiked,
+          likes: Math.max(0, (old.likes ?? 0) + (hasLiked ? 1 : -1))
         };
       });
       return { previousData };
     },
     onError: (err, variables, context) => {
       if (context?.previousData) {
-        queryClient.setQueryData(['post', postId], context.previousData);
+        queryClient.setQueryData(['postSocialMeta', postId], context.previousData);
       }
       if (err.message !== "Unauthorized") toast.error("Failed to toggle like");
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['post', postId] });
+      queryClient.invalidateQueries({ queryKey: ['postSocialMeta', postId] });
     }
   });
 
+  // Add Comment Mutation
   const addCommentMutation = useMutation({
     mutationFn: async (formData: CommentFormData) => {
       const api = socialApi(getToken);
@@ -115,11 +133,26 @@ export default function PostDetailPage({
     },
     onSuccess: () => {
       toast.success("Comment added");
-      queryClient.invalidateQueries({ queryKey: ['post', postId] });
+      queryClient.invalidateQueries({ queryKey: ['comments', postId] });
       reset();
     },
     onError: (err) => {
       toast.error(err instanceof ApiRequestError ? err.message : "Failed to add comment");
+    }
+  });
+
+  // Delete Comment Mutation
+  const deleteCommentMutation = useMutation({
+    mutationFn: async (commentId: string) => {
+      const api = socialApi(getToken);
+      return api.deleteComment(commentId);
+    },
+    onSuccess: () => {
+      toast.success("Comment deleted");
+      queryClient.invalidateQueries({ queryKey: ['comments', postId] });
+    },
+    onError: (err) => {
+      toast.error(err instanceof ApiRequestError ? err.message : "Failed to delete comment");
     }
   });
 
@@ -151,7 +184,35 @@ export default function PostDetailPage({
     toast.success("Link copied!");
   };
 
-  if (loading) {
+  const handleDownload = async () => {
+    if (!post?.image_url) return;
+    try {
+      const res = await fetch(post.image_url);
+      const blob = await res.blob();
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `rex-${post.title || "art"}-${Date.now()}.webp`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("Download started!");
+    } catch {
+      toast.error("Failed to download image");
+    }
+  };
+
+  const handleReportSubmit = async (reason: string) => {
+    if (!reportTarget) return;
+    if (reportTarget.type === "post") {
+      const api = postApi(getToken);
+      await api.report(reportTarget.id, reason);
+    } else {
+      const api = socialApi(getToken);
+      await api.reportComment(reportTarget.id, reason);
+    }
+  };
+
+  if (postLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-zinc-700" />
@@ -159,7 +220,7 @@ export default function PostDetailPage({
     );
   }
 
-  if (error || !post) {
+  if (postError || !post) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4 text-center">
         <h2 className="text-xl font-bold text-white">Post not found</h2>
@@ -212,36 +273,79 @@ export default function PostDetailPage({
             >
               <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
                 <MessageCircle className="w-5 h-5 text-indigo-400" />
-                Comments ({comments.length})
+                Comments ({totalComments})
               </h3>
 
               <div className="space-y-6 mb-8 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                {comments.length === 0 ? (
+                {commentsLoading ? (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader2 className="w-6 h-6 animate-spin text-zinc-700" />
+                  </div>
+                ) : comments.length === 0 ? (
                   <p className="text-zinc-500 text-sm text-center py-4">No comments yet. Be the first to share your thoughts!</p>
                 ) : (
-                  comments.map(comment => (
-                    <div key={comment.id} className="flex gap-4 group">
-                      <div className="w-10 h-10 rounded-full overflow-hidden relative border border-zinc-800 shrink-0">
-                        <Image
-                          src={comment.author?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.author?.username}`}
-                          alt="Avatar"
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <Link href={`/u/${comment.author?.username}`} className="font-bold text-white text-sm hover:text-indigo-400 transition">
-                            @{comment.author?.username}
-                          </Link>
-                          <span className="text-xs text-zinc-600">
-                            {new Date(comment.created_at).toLocaleDateString()}
-                          </span>
+                  <>
+                    <div className="space-y-6">
+                      {comments.map(comment => (
+                        <div key={comment.id} className="flex gap-4 group">
+                          <div className="w-10 h-10 rounded-full overflow-hidden relative border border-zinc-800 shrink-0">
+                            <Image
+                              src={comment.author?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.author?.username}`}
+                              alt="Avatar"
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1">
+                              <Link href={`/u/${comment.author?.username}`} className="font-bold text-white text-sm hover:text-indigo-400 transition">
+                                @{comment.author?.username}
+                              </Link>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-zinc-600">
+                                  {new Date(comment.created_at).toLocaleDateString()}
+                                </span>
+                                {userId && (
+                                  <button
+                                    onClick={() => setReportTarget({ type: "comment", id: comment.id })}
+                                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-zinc-800 text-zinc-600 hover:text-rose-400 transition"
+                                    title="Report comment"
+                                  >
+                                    <AlertTriangle className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                                {userId && comment.author_profile_id === userId && (
+                                  <button
+                                    onClick={() => {
+                                      if (confirm("Are you sure you want to delete this comment?")) {
+                                        deleteCommentMutation.mutate(comment.id);
+                                      }
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 text-xs text-zinc-500 hover:text-red-400 transition"
+                                    title="Delete comment"
+                                  >
+                                    Delete
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-zinc-300 text-sm leading-relaxed">{comment.body}</p>
+                          </div>
                         </div>
-                        <p className="text-zinc-300 text-sm leading-relaxed">{comment.body}</p>
-                      </div>
+                      ))}
                     </div>
-                  ))
+
+                    {/* Keyset Pagination Load More */}
+                    {hasNextPage && (
+                      <button
+                        onClick={() => fetchNextPage()}
+                        disabled={isFetchingNextPage}
+                        className="w-full text-center text-xs text-indigo-400 hover:text-indigo-300 font-semibold py-2 transition"
+                      >
+                        {isFetchingNextPage ? "Loading more comments..." : "Load more comments"}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
 
@@ -361,7 +465,7 @@ export default function PostDetailPage({
                   Share
                 </button>
                 <button
-                  onClick={() => window.open(post.image_url, "_blank")}
+                  onClick={handleDownload}
                   className="flex-1 flex items-center justify-center gap-2 bg-white text-zinc-900 font-bold py-3 px-4 rounded-xl hover:bg-zinc-100 transition active:scale-95"
                 >
                   <Download className="w-4 h-4" />
@@ -378,14 +482,26 @@ export default function PostDetailPage({
                   Published on {new Date(post.created_at).toLocaleDateString()}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <User className="w-3.5 h-3.5" />
-                <span>Private Metadata Hidden</span>
-              </div>
+              {userId && (
+                <button
+                  onClick={() => setReportTarget({ type: "post", id: postId })}
+                  className="flex items-center gap-1 hover:text-rose-400 transition"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>Report Post</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      <ReportModal
+        isOpen={!!reportTarget}
+        onClose={() => setReportTarget(null)}
+        title={`Report ${reportTarget?.type === "post" ? "Post" : "Comment"}`}
+        onSubmit={handleReportSubmit}
+      />
     </div>
   );
 }

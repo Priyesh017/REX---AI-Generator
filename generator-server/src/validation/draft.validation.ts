@@ -14,11 +14,7 @@ export const generateSchema = z.object({
 
 /** GET /api/studio/drafts — query params */
 export const listDraftsQuerySchema = z.object({
-  page: z
-    .string()
-    .optional()
-    .transform((v) => (v ? parseInt(v, 10) : 1))
-    .pipe(z.number().int().min(1)),
+  cursor: z.string().optional(),
   limit: z
     .string()
     .optional()
@@ -33,3 +29,4 @@ export const draftIdParamSchema = z.object({
 
 export type GenerateInput = z.infer<typeof generateSchema>;
 export type ListDraftsQuery = z.infer<typeof listDraftsQuerySchema>;
+export type DraftIdParam = z.infer<typeof draftIdParamSchema>;

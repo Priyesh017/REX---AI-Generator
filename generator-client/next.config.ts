@@ -1,5 +1,15 @@
 import type { NextConfig } from "next";
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+let supabaseHostname = "";
+if (supabaseUrl) {
+  try {
+    supabaseHostname = new URL(supabaseUrl).hostname;
+  } catch (e) {
+    supabaseHostname = supabaseUrl;
+  }
+}
+
 const nextConfig: NextConfig = {
   /* config options here */
   async redirects() {
@@ -15,7 +25,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        hostname: supabaseHostname || "localhost",
         pathname: "/storage/v1/object/public/generated-images/**",
       },
       {
